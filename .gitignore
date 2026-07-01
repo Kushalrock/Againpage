@@ -1,0 +1,45 @@
+# ---- Node / pnpm / Vite (reader, desktop) ----
+node_modules/
+dist/
+dist-ssr/
+*.local
+.vite/
+
+# ---- Rust / Tauri (desktop/src-tauri) ----
+# build output — large, regenerated; never commit
+target/
+# Tauri generated files
+**/gen/schemas/
+
+# ---- Python / uv (engine) ----
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+# NOTE: do NOT ignore uv.lock or pyproject.toml — those are committed
+
+# ---- Secrets / env (critical) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Editor ----
+.idea/
+*.swp
+# .vscode/ is intentionally NOT ignored — see note below
+
+# ---- Logs / misc ----
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# ---- Repo scan artifact ----
+temp/
