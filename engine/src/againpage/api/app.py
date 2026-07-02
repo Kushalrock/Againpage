@@ -23,7 +23,8 @@ def main() -> None:
             await seed_sample_issue(repo, uid)
         return repo
     repo = asyncio.run(_boot())
-    uvicorn.run(create_app(repo), host="127.0.0.1", port=8000)
+    port = int(os.environ.get("AGAINPAGE_API_PORT", "8000"))
+    uvicorn.run(create_app(repo), host="127.0.0.1", port=port)
 
 if __name__ == "__main__":
     main()
