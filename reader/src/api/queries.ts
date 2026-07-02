@@ -1,7 +1,8 @@
 import { createContext, useContext } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ApiClient } from './client'
 import { httpClient } from './http'
+import type { SettingsPatch } from '../types/settings'
 
 export const ClientContext = createContext<ApiClient>(httpClient())
 export const useClient = () => useContext(ClientContext)
@@ -13,4 +14,16 @@ export function useTodayIssue() {
 export function useArchive() {
   const client = useClient()
   return useQuery({ queryKey: ['archive'], queryFn: () => client.getArchive() })
+}
+export function useSettings() {
+  const client = useClient()
+  return useQuery({ queryKey: ['settings'], queryFn: () => client.getSettings() })
+}
+export function useSaveSettings() {
+  const client = useClient()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: SettingsPatch) => client.saveSettings(patch),
+    onSuccess: (data) => { queryClient.setQueryData(['settings'], data) },
+  })
 }

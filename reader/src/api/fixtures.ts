@@ -1,6 +1,7 @@
 import type { ApiClient } from './client'
 import type { IssueResponse } from '../types/issue'
 import type { ArchiveResponse } from '../types/archive'
+import type { Settings, SettingsResponse, SettingsPatch } from '../types/settings'
 
 export const AMOR_FATI: IssueResponse = {
   id: 'fixture-47',
@@ -305,8 +306,29 @@ export const ARCHIVE: ArchiveResponse = {
   total: 7,
 }
 
+const SETTINGS: Settings = {
+  vault_path: '~/Documents/Athenaeum',
+  excluded_paths: ['./Templates', './Daily notes', '~/Vault/Private'],
+  profile_text: '',
+  cadence: 'daily',
+  delivery_time: '07:00',
+  reading_min: 7,
+  notes_per_issue: 3,
+  provider: 'openrouter',
+  ollama_endpoint: '',
+  embed_model: 'openai/text-embedding-3-small',
+  summary_model: 'openai/gpt-4o-mini',
+  writer_model: 'anthropic/claude-3.5-sonnet',
+}
+let vaultNoteCount = 1284
+
 export const fixtureClient: ApiClient = {
   getTodayIssue: async () => AMOR_FATI,
   getIssue: async () => AMOR_FATI,
   getArchive: async () => ARCHIVE,
+  getSettings: async (): Promise<SettingsResponse> => ({ ...SETTINGS, vault_note_count: vaultNoteCount }),
+  saveSettings: async (patch: SettingsPatch): Promise<SettingsResponse> => {
+    Object.assign(SETTINGS, patch)
+    return { ...SETTINGS, vault_note_count: vaultNoteCount }
+  },
 }

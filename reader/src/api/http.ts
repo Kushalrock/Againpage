@@ -6,9 +6,20 @@ export function httpClient(baseUrl = 'http://localhost:8000'): ApiClient {
     if (!res.ok) throw new Error(`${p} → ${res.status}`)
     return res.json()
   }
+  const put = async (p: string, body: unknown) => {
+    const res = await fetch(baseUrl + p, {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+    if (!res.ok) throw new Error(`${p} → ${res.status}`)
+    return res.json()
+  }
   return {
     getTodayIssue: () => get('/issues/today'),
     getIssue: (id) => get(`/issues/${id}`),
     getArchive: () => get('/issues'),
+    getSettings: () => get('/settings'),
+    saveSettings: (patch) => put('/settings', patch),
   }
 }
