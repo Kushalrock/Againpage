@@ -1,0 +1,9 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17     # Postgres 17 with pgvector preinstalled
+    environment:
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: againpage
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+volumes: { pgdata: {} }

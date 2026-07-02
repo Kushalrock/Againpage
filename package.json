@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "db:up": "docker compose -f infra/docker-compose.yaml up -d",
+    "db:down": "docker compose -f infra/docker-compose.yaml down",
+    "dev": "pnpm db:up && pnpm --filter desktop tauri dev"
   },
   "keywords": [],
   "author": "",
