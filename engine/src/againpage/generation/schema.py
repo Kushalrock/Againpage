@@ -6,7 +6,7 @@ from againpage.core.models import IssueContent
 class IssueValidationError(Exception):
     def __init__(self, errors): super().__init__(str(errors)); self.errors = errors
 
-_FENCE = re.compile(r"```(?:json)?\s*(\{.*?\})\s*```", re.DOTALL)
+_FENCE = re.compile(r"```(?:json)?\s*(\{.*\})\s*```", re.DOTALL)
 
 def extract_json(text: str) -> dict:
     text = text.strip()
@@ -16,7 +16,10 @@ def extract_json(text: str) -> dict:
         start = candidate.find("{"); end = candidate.rfind("}")
         if start >= 0 and end > start:
             candidate = candidate[start:end + 1]
-    return json.loads(candidate)
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError as e:
+        raise IssueValidationError([{"type": "json_decode", "msg": str(e)}]) from e
 
 def validate_issue(raw: dict) -> IssueContent:
     try:

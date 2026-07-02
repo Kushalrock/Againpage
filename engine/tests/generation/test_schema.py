@@ -18,3 +18,11 @@ def test_bad_flavor_raises():
 def test_extract_json_from_fenced_text():
     txt = "Here you go:\n```json\n{\"a\": 1}\n```\nthanks"
     assert extract_json(txt) == {"a": 1}
+
+def test_extract_json_handles_nested_objects():
+    txt = '```json\n{"a": {"b": 1}, "c": [1,2]}\n```'
+    assert extract_json(txt) == {"a": {"b": 1}, "c": [1, 2]}
+
+def test_extract_json_raises_on_garbage():
+    with pytest.raises(IssueValidationError):
+        extract_json("not json at all")
