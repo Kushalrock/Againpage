@@ -12,21 +12,26 @@ def create_app(repo: Repository) -> FastAPI:
     return app
 
 def main() -> None:
-    import os, uvicorn
+    import os, asyncio, uvicorn
     from againpage.storage import db, migrate
+    from againpage.storage.repository import Repository
     from againpage.storage.seed import seed_sample_issue
-    import asyncio
-    pool = db.make_pool(os.environ.get("DATABASE_URL", db.DEFAULT_DSN))
-    async def _boot() -> Repository:
+    port = int(os.environ.get("AGAINPAGE_API_PORT", "8000"))
+    dsn = os.environ.get("DATABASE_URL", db.DEFAULT_DSN)
+
+    async def _amain() -> None:
+        pool = db.make_pool(dsn, open=False)
+        await pool.open()
         await migrate.apply(pool)
         repo = Repository(pool)
         uid = await repo.ensure_local_user()
         if (await repo.latest_issue(uid)) is None:
             await seed_sample_issue(repo, uid)
-        return repo
-    repo = asyncio.run(_boot())
-    port = int(os.environ.get("AGAINPAGE_API_PORT", "8000"))
-    uvicorn.run(create_app(repo), host="127.0.0.1", port=port)
+        app = create_app(repo)
+        config = uvicorn.Config(app, host="127.0.0.1", port=port, loop="asyncio")
+        await uvicorn.Server(config).serve()
+
+    asyncio.run(_amain())
 
 if __name__ == "__main__":
     main()

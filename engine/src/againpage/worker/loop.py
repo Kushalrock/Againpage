@@ -51,9 +51,15 @@ def main() -> None:  # pragma: no cover
     import os
     from againpage.storage import db, migrate
     from againpage.providers.factory import make_provider
-    pool = db.make_pool(os.environ.get("DATABASE_URL", db.DEFAULT_DSN))
-    asyncio.run(migrate.apply(pool))
-    asyncio.run(run_worker(pool, make_provider))
+    dsn = os.environ.get("DATABASE_URL", db.DEFAULT_DSN)
+
+    async def _amain() -> None:
+        pool = db.make_pool(dsn, open=False)
+        await pool.open()
+        await migrate.apply(pool)
+        await run_worker(pool, make_provider)
+
+    asyncio.run(_amain())
 
 if __name__ == "__main__":
     main()
