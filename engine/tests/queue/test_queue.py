@@ -1,0 +1,27 @@
+import os
+from datetime import timedelta
+from againpage.storage import db, migrate
+from againpage.queue.queue import Queue
+
+async def fresh_queue() -> Queue:
+    pool = db.make_pool(os.environ.get("DATABASE_URL", db.DEFAULT_DSN))
+    async with pool.connection() as conn:
+        await conn.execute("DROP SCHEMA public CASCADE; CREATE SCHEMA public;")
+    await migrate.apply(pool)
+    return Queue(pool)
+
+async def test_enqueue_claim_complete():
+    q = await fresh_queue()
+    jid = await q.enqueue("generate", {"n": 1})
+    job = await q.claim()
+    assert job is not None and job.id == jid and job.type == "generate" and job.attempts == 1
+    assert (await q.claim()) is None          # already running → not re-claimed
+    await q.complete(job.id)
+
+async def test_fail_reschedules():
+    q = await fresh_queue()
+    await q.enqueue("ingest", {})
+    job = await q.claim()
+    await q.fail(job.id, retry_in=timedelta(seconds=0))
+    again = await q.claim()
+    assert again is not None and again.attempts == 2
