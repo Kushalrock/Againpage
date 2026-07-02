@@ -1,10 +1,37 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from againpage.storage.repository import Repository
-from againpage.core.models import IssueContent, IssueRow
-from againpage.api.schemas import IssueResponse, ArchiveItem, ArchiveGroup, ArchiveResponse
+from againpage.core.models import IssueContent, IssueRow, SettingsRow
+from againpage.api.schemas import (IssueResponse, ArchiveItem, ArchiveGroup, ArchiveResponse,
+    SettingsResponse, ProviderTestRequest, ProviderTestResult, VaultStatus)
 from againpage.queue.queue import Queue
+from againpage.providers.factory import make_provider
+from againpage.vault.scan import scan_vault
+
+def make_provider_for_test(req: ProviderTestRequest):
+    # keys come from env; a SettingsRow-lite is enough for the factory
+    return make_provider(SettingsRow(user_id=None, vault_path=None, excluded_paths=[],
+        profile_text=None, cadence="daily", delivery_time=None, reading_min=5, notes_per_issue=3,
+        provider=req.provider, ollama_endpoint=req.ollama_endpoint,
+        embed_model=req.embed_model, summary_model=req.summary_model, writer_model=req.writer_model))
+
+def _settings_response(s, count: int) -> SettingsResponse:
+    return SettingsResponse(vault_path=s.vault_path or "", excluded_paths=s.excluded_paths,
+        profile_text=s.profile_text or "", cadence=s.cadence,
+        delivery_time=s.delivery_time.strftime("%H:%M") if s.delivery_time else "07:00",
+        reading_min=s.reading_min, notes_per_issue=s.notes_per_issue, provider=s.provider,
+        ollama_endpoint=s.ollama_endpoint, embed_model=s.embed_model or "",
+        summary_model=s.summary_model or "", writer_model=s.writer_model or "",
+        vault_note_count=count)
+
+def _count(s) -> int:
+    if not s.vault_path:
+        return 0
+    try:
+        return len(scan_vault(s.vault_path, excluded=s.excluded_paths))
+    except OSError:
+        return 0
 
 def _to_response(row: IssueRow) -> IssueResponse:
     return IssueResponse(
@@ -61,5 +88,31 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
         return ArchiveResponse(
             groups=[ArchiveGroup(label=k, items=v) for k, v in groups.items()],
             total=len(rows))
+
+    @r.get("/settings")
+    async def get_settings():
+        uid = await repo.ensure_local_user()
+        s = await repo.get_settings(uid)
+        return _settings_response(s, _count(s))
+
+    @r.put("/settings")
+    async def put_settings(patch: dict):
+        uid = await repo.ensure_local_user()
+        s = await repo.upsert_settings(uid, patch)
+        return _settings_response(s, _count(s))
+
+    @r.post("/provider/test")
+    async def provider_test(req: ProviderTestRequest):
+        provider = make_provider_for_test(req)
+        models = sorted({m for m in [req.embed_model, req.summary_model, req.writer_model] if m})
+        h = await provider.health(models=models)
+        return ProviderTestResult(ok=h.ok, reachable=h.reachable, models=h.models, detail=h.detail)
+
+    @r.get("/vault/status")
+    async def vault_status():
+        uid = await repo.ensure_local_user()
+        s = await repo.get_settings(uid)
+        return VaultStatus(vault_path=s.vault_path or "", note_count=_count(s),
+            scanned_at=datetime.now(timezone.utc).isoformat())
 
     return r
