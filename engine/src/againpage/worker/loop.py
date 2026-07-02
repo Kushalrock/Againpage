@@ -1,6 +1,6 @@
 from __future__ import annotations
 import asyncio
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from againpage.core.models import SettingsRow, NewIssue
 from againpage.queue.queue import Queue, Job
 from againpage.storage.repository import Repository
@@ -10,6 +10,7 @@ from againpage.generation.payload import manual_payload, word_target
 from againpage.generation.generate import run_generate
 from againpage.pipeline.ingest import ingest_file, ingest_vault
 from againpage.pipeline.cluster import run_cluster
+from againpage.scheduler.scheduler import Scheduler
 
 # A hand-fed M1 payload so `trigger` works before ingest/selection exist.
 def fixture_payload(settings: SettingsRow) -> dict:
@@ -37,6 +38,8 @@ async def handle_generate(job: Job, *, repo: Repository, provider: Provider, set
 async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     queue = Queue(pool)
     repo = Repository(pool)
+    scheduler = Scheduler(repo, queue)
+    last_tick = 0.0
     while True:
         job = await queue.claim()
         if job is None:
@@ -63,6 +66,10 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
             await queue.complete(job.id)
         except Exception:  # noqa: BLE001
             await queue.fail(job.id, retry_in=timedelta(seconds=min(60, 2 ** job.attempts)))
+        import time as _t
+        if _t.monotonic() - last_tick > 60:
+            last_tick = _t.monotonic()
+            await scheduler.tick(now=datetime.now(timezone.utc))
 
 def main() -> None:  # pragma: no cover
     import os
