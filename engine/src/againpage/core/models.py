@@ -151,3 +151,27 @@ class NoteNeighbor:
     title: str
     summary: str | None
     similarity: float            # 1 - cosine_distance
+
+@dataclass
+class ThemeRow:
+    id: UUID
+    user_id: UUID
+    label: str
+    centroid: list[float] | None
+    membership_hash: str | None
+    last_visited_at: datetime | None
+    created_at: datetime
+
+@dataclass
+class Cluster:
+    member_ids: list[UUID]
+    centroid: list[float]
+    membership_hash: str
+
+@dataclass
+class ClusterInput:
+    label: str
+    centroid: list[float]
+    membership_hash: str
+    member_ids: list[UUID]
+    weights: dict[UUID, float] = field(default_factory=dict)
