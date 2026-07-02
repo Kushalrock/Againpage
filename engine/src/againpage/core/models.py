@@ -175,3 +175,4 @@ class ClusterInput:
     membership_hash: str
     member_ids: list[UUID]
     weights: dict[UUID, float] = field(default_factory=dict)
+    last_visited_at: datetime | None = None

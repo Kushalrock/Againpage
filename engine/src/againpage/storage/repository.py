@@ -5,7 +5,7 @@ from uuid import UUID
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 from againpage.core.models import (SettingsRow, IssueRow, NewIssue,
-    NewNote, NoteRow, LinkEdge, NoteNeighbor)
+    NewNote, NoteRow, LinkEdge, NoteNeighbor, ThemeRow, ClusterInput)
 
 _SETTINGS_COLS = ("user_id","vault_path","excluded_paths","profile_text","cadence",
     "delivery_time","reading_min","notes_per_issue","provider","ollama_endpoint",
@@ -175,3 +175,40 @@ class Repository:
             return [NoteNeighbor(note_id=r["id"], vault_path=r["vault_path"], title=r["title"],
                                  summary=r["summary"], similarity=float(r["similarity"]))
                     for r in await cur.fetchall()]
+
+    async def replace_clustering(self, user_id, clusters: list[ClusterInput]) -> None:
+        async with self.pool.connection() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    """DELETE FROM note_themes WHERE theme_id IN
+                       (SELECT id FROM themes WHERE user_id=%s)""", (user_id,))
+                await conn.execute("DELETE FROM themes WHERE user_id=%s", (user_id,))
+                for ci in clusters:
+                    conn.row_factory = dict_row
+                    cur = await conn.execute(
+                        """INSERT INTO themes(user_id,label,centroid,membership_hash,last_visited_at)
+                           VALUES (%s,%s,%s,%s,%s) RETURNING id""",
+                        (user_id, ci.label, ci.centroid, ci.membership_hash, ci.last_visited_at))
+                    theme_id = (await cur.fetchone())["id"]
+                    for note_id in ci.member_ids:
+                        await conn.execute(
+                            """INSERT INTO note_themes(note_id,theme_id,weight)
+                               VALUES (%s,%s,%s)""",
+                            (note_id, theme_id, ci.weights.get(note_id, 1.0)))
+
+    async def themes(self, user_id) -> list[ThemeRow]:
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute("SELECT * FROM themes WHERE user_id=%s", (user_id,))
+            return [ThemeRow(id=r["id"], user_id=r["user_id"], label=r["label"],
+                centroid=list(r["centroid"]) if r["centroid"] is not None else None,
+                membership_hash=r["membership_hash"], last_visited_at=r["last_visited_at"],
+                created_at=r["created_at"]) for r in await cur.fetchall()]
+
+    async def theme_members(self, theme_id) -> list[NoteRow]:
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute(
+                """SELECT n.* FROM notes n JOIN note_themes nt ON nt.note_id=n.id
+                   WHERE nt.theme_id=%s AND n.active""", (theme_id,))
+            return [_note_row(r) for r in await cur.fetchall()]
