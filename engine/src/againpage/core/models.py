@@ -89,3 +89,14 @@ class NewIssue:
     payload: dict | None = None
     model: str | None = None
     status: str = "generated"
+
+class NoteDigest(BaseModel):
+    substantive: bool
+    summary: str
+    tags: list[str]
+
+class ProviderHealth(BaseModel):
+    ok: bool
+    reachable: bool
+    models: dict[str, bool]
+    detail: str = ""
