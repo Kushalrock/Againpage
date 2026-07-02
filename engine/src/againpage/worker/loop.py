@@ -7,6 +7,7 @@ from againpage.storage.repository import Repository
 from againpage.providers.base import Provider
 from againpage.generation.writer import compose_issue
 from againpage.generation.payload import manual_payload, word_target
+from againpage.generation.generate import run_generate
 from againpage.pipeline.ingest import ingest_file, ingest_vault
 from againpage.pipeline.cluster import run_cluster
 
@@ -44,7 +45,12 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
             settings = await repo.get_settings(await repo.ensure_local_user())
             provider = make_provider(settings)
             if job.type == "generate":
-                await handle_generate(job, repo=repo, provider=provider, settings=settings)
+                themes = await repo.themes(settings.user_id)
+                if themes:
+                    await run_generate(settings.user_id, repo=repo, provider=provider,
+                                       settings=settings, now=date.today())
+                else:
+                    await handle_generate(job, repo=repo, provider=provider, settings=settings)
             elif job.type == "ingest":
                 path = job.payload.get("path")
                 if path:
