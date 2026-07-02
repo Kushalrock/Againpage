@@ -8,6 +8,7 @@ from againpage.providers.base import Provider
 from againpage.generation.writer import compose_issue
 from againpage.generation.payload import manual_payload, word_target
 from againpage.pipeline.ingest import ingest_file, ingest_vault
+from againpage.pipeline.cluster import run_cluster
 
 # A hand-fed M1 payload so `trigger` works before ingest/selection exist.
 def fixture_payload(settings: SettingsRow) -> dict:
@@ -51,6 +52,8 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
                 elif settings.vault_path:
                     await ingest_vault(settings.vault_path, repo=repo, provider=provider,
                                        settings=settings, user_id=settings.user_id)
+            elif job.type == "cluster":
+                await run_cluster(settings.user_id, repo=repo, provider=provider, settings=settings)
             await queue.complete(job.id)
         except Exception:  # noqa: BLE001
             await queue.fail(job.id, retry_in=timedelta(seconds=min(60, 2 ** job.attempts)))

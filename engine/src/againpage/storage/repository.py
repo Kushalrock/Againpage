@@ -21,10 +21,25 @@ def _issue_row(d: dict) -> IssueRow:
         word_target=d["word_target"], content=d["content"], payload=d["payload"],
         model=d["model"], status=d["status"], synced_at=d["synced_at"], created_at=d["created_at"])
 
+def _parse_vector(value) -> list[float] | None:
+    # pgvector's psycopg adapter decodes `vector` columns to list[float] once
+    # register_vector_async() has run on the serving connection. If a pool
+    # connection was configured before the `vector` extension existed (e.g. a
+    # test drops+recreates the schema after the pool already opened its
+    # min_size connections), the adapter registration is a no-op and psycopg
+    # falls back to returning the column's raw text form, e.g. "[0.1,0.2]".
+    # Parse defensively so callers always get list[float] regardless of when
+    # the adapter was registered.
+    if value is None:
+        return None
+    if isinstance(value, str):
+        return [float(x) for x in value.strip("[]").split(",")] if value.strip("[]") else []
+    return list(value)
+
 def _note_row(d: dict) -> NoteRow:
     return NoteRow(id=d["id"], user_id=d["user_id"], vault_path=d["vault_path"], title=d["title"],
         content_hash=d["content_hash"], substantive=d["substantive"], summary=d["summary"],
-        tags=list(d["tags"]), embedding=list(d["embedding"]) if d["embedding"] is not None else None,
+        tags=list(d["tags"]), embedding=_parse_vector(d["embedding"]),
         active=d["active"], updated_at=d["updated_at"])
 
 class Repository:
@@ -201,7 +216,7 @@ class Repository:
             conn.row_factory = dict_row
             cur = await conn.execute("SELECT * FROM themes WHERE user_id=%s", (user_id,))
             return [ThemeRow(id=r["id"], user_id=r["user_id"], label=r["label"],
-                centroid=list(r["centroid"]) if r["centroid"] is not None else None,
+                centroid=_parse_vector(r["centroid"]),
                 membership_hash=r["membership_hash"], last_visited_at=r["last_visited_at"],
                 created_at=r["created_at"]) for r in await cur.fetchall()]
 

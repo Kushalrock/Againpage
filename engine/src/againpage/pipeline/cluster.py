@@ -52,3 +52,33 @@ def reduce_and_cluster(embeddings: list[list[float]], ids: list[UUID], *,
         clusters = [Cluster(member_ids=list(ids), centroid=centroid(embeddings),
                             membership_hash=membership_hash(ids))]
     return clusters
+
+from againpage.core.models import ClusterInput
+from againpage.pipeline.label import label_cluster
+
+async def run_cluster(user_id, *, repo, provider, settings) -> int:
+    notes = await repo.active_notes(user_id)
+    notes = [n for n in notes if n.embedding is not None]
+    if not notes:
+        await repo.replace_clustering(user_id, [])
+        return 0
+    ids = [n.id for n in notes]
+    embs = [n.embedding for n in notes]
+    by_id = {n.id: n for n in notes}
+    clusters = reduce_and_cluster(embs, ids,
+        min_cluster_size=max(2, settings.notes_per_issue), random_state=42)
+    existing = await repo.themes(user_id)
+    diff = diff_clusters(clusters, existing)
+    inputs: list[ClusterInput] = []
+    for c, theme in diff.unchanged:
+        inputs.append(ClusterInput(label=theme.label, centroid=c.centroid,
+            membership_hash=c.membership_hash, member_ids=c.member_ids,
+            weights={i: 1.0 for i in c.member_ids}, last_visited_at=theme.last_visited_at))
+    for c in diff.to_relabel:
+        members = [by_id[i] for i in c.member_ids if i in by_id]
+        label = await label_cluster(members, provider, model=settings.summary_model or "")
+        inputs.append(ClusterInput(label=label, centroid=c.centroid,
+            membership_hash=c.membership_hash, member_ids=c.member_ids,
+            weights={i: 1.0 for i in c.member_ids}, last_visited_at=None))
+    await repo.replace_clustering(user_id, inputs)
+    return len(inputs)
