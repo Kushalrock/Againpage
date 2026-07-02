@@ -114,3 +114,40 @@ class Payload(BaseModel):
     wildcard: dict | None = None
     forgotten: dict | None = None
     profile: str | None = None
+
+@dataclass
+class NewNote:
+    user_id: UUID
+    vault_path: str
+    title: str
+    content_hash: str
+    substantive: bool
+    summary: str | None
+    tags: list[str]
+    embedding: list[float] | None
+
+@dataclass
+class NoteRow:
+    id: UUID
+    user_id: UUID
+    vault_path: str
+    title: str
+    content_hash: str
+    substantive: bool
+    summary: str | None
+    tags: list[str]
+    embedding: list[float] | None
+    active: bool
+    updated_at: datetime | None
+
+@dataclass
+class LinkEdge:
+    dst_vault_path: str          # resolved target path; None targets are dropped before this
+
+@dataclass
+class NoteNeighbor:
+    note_id: UUID
+    vault_path: str
+    title: str
+    summary: str | None
+    similarity: float            # 1 - cosine_distance
