@@ -5,7 +5,8 @@ from uuid import UUID
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 from againpage.core.models import (SettingsRow, IssueRow, NewIssue,
-    NewNote, NoteRow, LinkEdge, NoteNeighbor, ThemeRow, ClusterInput)
+    NewNote, NoteRow, LinkEdge, NoteNeighbor, ThemeRow, ClusterInput,
+    SelectionContext, ThemeCtx, LinkCtx, IssueNote)
 
 _SETTINGS_COLS = ("user_id","vault_path","excluded_paths","profile_text","cadence",
     "delivery_time","reading_min","notes_per_issue","provider","ollama_endpoint",
@@ -227,3 +228,51 @@ class Repository:
                 """SELECT n.* FROM notes n JOIN note_themes nt ON nt.note_id=n.id
                    WHERE nt.theme_id=%s AND n.active""", (theme_id,))
             return [_note_row(r) for r in await cur.fetchall()]
+
+    async def last_surfaced(self, user_id):
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute(
+                """SELECT ino.note_id, MAX(i.issue_date) AS d
+                   FROM issue_notes ino JOIN issues i ON i.id = ino.issue_id
+                   WHERE i.user_id=%s GROUP BY ino.note_id""", (user_id,))
+            return {r["note_id"]: r["d"] for r in await cur.fetchall()}
+
+    async def record_issue_notes(self, issue_id, rows) -> None:
+        async with self.pool.connection() as conn:
+            for r in rows:
+                await conn.execute(
+                    """INSERT INTO issue_notes(issue_id,note_id,role,theme_angle)
+                       VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING""",
+                    (issue_id, r.note_id, r.role, r.theme_angle))
+
+    async def touch_theme_visited(self, theme_id, when) -> None:
+        async with self.pool.connection() as conn:
+            await conn.execute("UPDATE themes SET last_visited_at=%s WHERE id=%s", (when, theme_id))
+
+    async def touch_link_seen(self, src, dst, when) -> None:
+        async with self.pool.connection() as conn:
+            await conn.execute(
+                """UPDATE wikilinks SET last_seen_at=%s
+                   WHERE (src_note_id=%s AND dst_note_id=%s) OR (src_note_id=%s AND dst_note_id=%s)""",
+                (when, src, dst, dst, src))
+
+    async def build_selection_context(self, user_id):
+        notes = {n.id: n for n in await self.active_notes(user_id)}
+        theme_rows = await self.themes(user_id)
+        themes = []
+        for t in theme_rows:
+            members = await self.theme_members(t.id)
+            themes.append(ThemeCtx(theme_id=t.id, label=t.label, centroid=t.centroid or [0.0]*768,
+                last_visited_at=t.last_visited_at, member_ids=[m.id for m in members]))
+        surfaced = await self.last_surfaced(user_id)
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute(
+                """SELECT src_note_id, dst_note_id, created_at, last_seen_at FROM wikilinks
+                   WHERE src_note_id IN (SELECT id FROM notes WHERE user_id=%s)""", (user_id,))
+            links = [LinkCtx(src=r["src_note_id"], dst=r["dst_note_id"],
+                created_at=r["created_at"], last_seen_at=r["last_seen_at"]) for r in await cur.fetchall()]
+        settings = await self.get_settings(user_id)
+        return SelectionContext(themes=themes, notes_by_id=notes, surfaced=surfaced,
+            links=links, notes_per_issue=settings.notes_per_issue if settings else 3)
