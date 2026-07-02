@@ -1,12 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from againpage.storage.repository import Repository
+from againpage.queue.queue import Queue
 from againpage.api.routes import make_router
 
 def create_app(repo: Repository) -> FastAPI:
     app = FastAPI(title="AgainPage")
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
-    app.include_router(make_router(repo))
+    queue = Queue(repo.pool)
+    app.include_router(make_router(repo, queue))
     return app
 
 def main() -> None:

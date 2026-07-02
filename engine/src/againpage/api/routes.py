@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException
 from againpage.storage.repository import Repository
 from againpage.core.models import IssueContent, IssueRow
 from againpage.api.schemas import IssueResponse, ArchiveItem, ArchiveGroup, ArchiveResponse
+from againpage.queue.queue import Queue
 
 def _to_response(row: IssueRow) -> IssueResponse:
     return IssueResponse(
@@ -16,12 +17,19 @@ def _group_label(d: date, today: date) -> str:
         return "This week"
     return f"Earlier in {d.strftime('%B')}"
 
-def make_router(repo: Repository) -> APIRouter:
+def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
     r = APIRouter()
 
     @r.get("/health")
     async def health():
         return {"status": "ok"}
+
+    @r.post("/trigger")
+    async def trigger():
+        if queue is None:
+            raise HTTPException(503, "queue unavailable")
+        job_id = await queue.enqueue("generate", {})
+        return {"job_id": str(job_id)}
 
     @r.get("/issues/today")
     async def today():

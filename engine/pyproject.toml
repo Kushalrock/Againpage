@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 againpage-api = "againpage.api.app:main"
+againpage-worker = "againpage.worker.loop:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
