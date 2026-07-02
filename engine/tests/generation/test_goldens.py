@@ -5,12 +5,20 @@ import pytest
 from againpage.generation.writer import compose_issue
 
 VALID = {
-    "title": "T",
-    "dek": "d",
+    "title": "Test Golden Issue",
+    "dek": "A test dek for golden validation",
     "standfirst": "s",
     "sources": ["a"],
-    "lead": "x",
-    "connections": [],
+    "lead": "Test lead content",
+    "connections": [
+        {
+            "flavor": "discovery",
+            "a": "topicA",
+            "b": "topicB",
+            "overlap": "shared context",
+            "text": "How topic A relates to topic B"
+        }
+    ],
     "standalone_summaries": [],
     "questions": [],
     "apply": [],
@@ -40,6 +48,10 @@ async def test_all_goldens_compose_and_validate():
     )
     assert files, "no golden payloads found"
     for f in files:
-        payload = json.load(open(f))
+        with open(f) as fh:
+            payload = json.load(fh)
         issue = await compose_issue(payload, FakeProvider(), writer_model="m")
-        assert issue.title  # validated IssueContent
+        assert issue.title
+        assert issue.dek
+        assert issue.lead
+        assert isinstance(issue.connections, list)
