@@ -4,7 +4,8 @@ from datetime import date, time
 from uuid import UUID
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
-from againpage.core.models import SettingsRow, IssueRow, NewIssue
+from againpage.core.models import (SettingsRow, IssueRow, NewIssue,
+    NewNote, NoteRow, LinkEdge, NoteNeighbor)
 
 _SETTINGS_COLS = ("user_id","vault_path","excluded_paths","profile_text","cadence",
     "delivery_time","reading_min","notes_per_issue","provider","ollama_endpoint",
@@ -19,6 +20,12 @@ def _issue_row(d: dict) -> IssueRow:
         theme_id=d["theme_id"], theme_label=d["theme_label"], reading_min=d["reading_min"],
         word_target=d["word_target"], content=d["content"], payload=d["payload"],
         model=d["model"], status=d["status"], synced_at=d["synced_at"], created_at=d["created_at"])
+
+def _note_row(d: dict) -> NoteRow:
+    return NoteRow(id=d["id"], user_id=d["user_id"], vault_path=d["vault_path"], title=d["title"],
+        content_hash=d["content_hash"], substantive=d["substantive"], summary=d["summary"],
+        tags=list(d["tags"]), embedding=list(d["embedding"]) if d["embedding"] is not None else None,
+        active=d["active"], updated_at=d["updated_at"])
 
 class Repository:
     def __init__(self, pool: AsyncConnectionPool):
@@ -99,3 +106,72 @@ class Repository:
                 "SELECT * FROM issues WHERE user_id=%s ORDER BY issue_date DESC, created_at DESC",
                 (user_id,))
             return [_issue_row(r) for r in await cur.fetchall()]
+
+    async def upsert_note(self, note: NewNote) -> NoteRow:
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute(
+                """INSERT INTO notes(user_id,vault_path,title,content_hash,substantive,
+                        summary,tags,embedding,active,updated_at)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,TRUE,now())
+                   ON CONFLICT (user_id,vault_path) DO UPDATE SET
+                     title=EXCLUDED.title, content_hash=EXCLUDED.content_hash,
+                     substantive=EXCLUDED.substantive, summary=EXCLUDED.summary,
+                     tags=EXCLUDED.tags, embedding=EXCLUDED.embedding,
+                     active=TRUE, updated_at=now()
+                   RETURNING *""",
+                (note.user_id, note.vault_path, note.title, note.content_hash, note.substantive,
+                 note.summary, note.tags, note.embedding))
+            return _note_row(await cur.fetchone())
+
+    async def note_by_path(self, user_id, vault_path):
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute(
+                "SELECT * FROM notes WHERE user_id=%s AND vault_path=%s", (user_id, vault_path))
+            row = await cur.fetchone()
+            return _note_row(row) if row else None
+
+    async def active_notes(self, user_id):
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute(
+                "SELECT * FROM notes WHERE user_id=%s AND active AND substantive", (user_id,))
+            return [_note_row(r) for r in await cur.fetchall()]
+
+    async def deactivate_missing(self, user_id, seen_paths: set[str]) -> int:
+        async with self.pool.connection() as conn:
+            cur = await conn.execute(
+                "UPDATE notes SET active=FALSE WHERE user_id=%s AND active AND NOT (vault_path = ANY(%s))",
+                (user_id, list(seen_paths)))
+            return cur.rowcount
+
+    async def replace_links(self, src_note_id, edges) -> None:
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            await conn.execute("DELETE FROM wikilinks WHERE src_note_id=%s", (src_note_id,))
+            for e in edges:
+                cur = await conn.execute(
+                    "SELECT id FROM notes WHERE vault_path=%s LIMIT 1", (e.dst_vault_path,))
+                dst = await cur.fetchone()
+                if not dst:
+                    continue
+                await conn.execute(
+                    """INSERT INTO wikilinks(src_note_id,dst_note_id,created_at,last_seen_at)
+                       VALUES (%s,%s,now(),now()) ON CONFLICT DO NOTHING""",
+                    (src_note_id, dst["id"]))
+
+    async def nearest_notes(self, embedding, *, limit, exclude):
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute(
+                """SELECT id, vault_path, title, summary,
+                          1 - (embedding <=> %s::vector) AS similarity
+                   FROM notes
+                   WHERE active AND substantive AND embedding IS NOT NULL
+                         AND NOT (id = ANY(%s))
+                   ORDER BY embedding <=> %s::vector LIMIT %s""",
+                (embedding, list(exclude), embedding, limit))
+            return [NoteNeighbor(note_id=r["id"], vault_path=r["vault_path"], title=r["title"],
+                                 summary=r["summary"], similarity=float(r["similarity"]))
+                    for r in await cur.fetchall()]
