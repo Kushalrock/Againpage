@@ -7,6 +7,7 @@ from againpage.storage.repository import Repository
 from againpage.providers.base import Provider
 from againpage.generation.writer import compose_issue
 from againpage.generation.payload import manual_payload, word_target
+from againpage.pipeline.ingest import ingest_file, ingest_vault
 
 # A hand-fed M1 payload so `trigger` works before ingest/selection exist.
 def fixture_payload(settings: SettingsRow) -> dict:
@@ -43,6 +44,13 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
             provider = make_provider(settings)
             if job.type == "generate":
                 await handle_generate(job, repo=repo, provider=provider, settings=settings)
+            elif job.type == "ingest":
+                path = job.payload.get("path")
+                if path:
+                    await ingest_file(path, repo=repo, provider=provider, settings=settings, user_id=settings.user_id)
+                elif settings.vault_path:
+                    await ingest_vault(settings.vault_path, repo=repo, provider=provider,
+                                       settings=settings, user_id=settings.user_id)
             await queue.complete(job.id)
         except Exception:  # noqa: BLE001
             await queue.fail(job.id, retry_in=timedelta(seconds=min(60, 2 ** job.attempts)))
