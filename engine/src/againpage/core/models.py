@@ -100,3 +100,17 @@ class ProviderHealth(BaseModel):
     reachable: bool
     models: dict[str, bool]
     detail: str = ""
+
+class Payload(BaseModel):
+    date: str | None = None
+    issue_no: int | None = None
+    reading_minutes: int
+    target_word_count: int
+    include: list[str]
+    theme: str
+    anchor: dict
+    fresh: list[dict] = []
+    connections_found: list[dict] = []
+    wildcard: dict | None = None
+    forgotten: dict | None = None
+    profile: str | None = None
