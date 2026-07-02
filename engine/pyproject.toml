@@ -12,6 +12,9 @@ dependencies = [
     "uvicorn>=0.49.0",
 ]
 
+[project.scripts]
+againpage-api = "againpage.api.app:main"
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = ["src"]
@@ -21,4 +24,5 @@ testpaths = ["tests"]
 dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "httpx",
 ]
