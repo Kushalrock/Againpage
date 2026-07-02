@@ -63,13 +63,15 @@ def select(ctx: SelectionContext, *, now: datetime, rng: random.Random) -> Selec
                 why=f"shared idea between {base.title} and {cand.title}")))
     connections.sort(key=lambda t: -t[0])
     top_conn = [c for _, c in connections[:max(2, ctx.notes_per_issue)]]
+    chosen_ids |= {c.note.note_id for c in top_conn}
 
     # ---- Stage 4: wildcard (theme farthest from today's; unsurfaced member) ----
     wildcard = None; wildcard_from = None
     others = [t for t in ctx.themes if t.theme_id != theme.theme_id]
     if others:
         far = max(others, key=lambda t: 1 - cosine(t.centroid, theme.centroid))
-        far_members = [ctx.notes_by_id[i] for i in far.member_ids if i in ctx.notes_by_id]
+        far_members = [ctx.notes_by_id[i] for i in far.member_ids
+                       if i in ctx.notes_by_id and i not in chosen_ids]
         unseen = [n for n in far_members if ctx.surfaced.get(n.id) is None] or far_members
         if unseen:
             wildcard = _selected(weighted_sample(unseen, [1.0] * len(unseen), rng))
