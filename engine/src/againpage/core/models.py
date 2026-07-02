@@ -176,3 +176,57 @@ class ClusterInput:
     member_ids: list[UUID]
     weights: dict[UUID, float] = field(default_factory=dict)
     last_visited_at: datetime | None = None
+
+@dataclass
+class IssueNote:
+    note_id: UUID
+    role: str                    # anchor|fresh|connection|wildcard|forgotten
+    theme_angle: str | None
+
+@dataclass
+class SelectedNote:
+    note_id: UUID
+    vault_path: str
+    title: str
+    summary: str | None
+
+@dataclass
+class SelectedConnection:
+    note: SelectedNote
+    flavor: str                  # discovery|reminder
+    why: str
+
+@dataclass
+class Selection:
+    theme_id: UUID | None
+    theme_label: str
+    anchor: SelectedNote
+    fresh: list[SelectedNote]
+    connections: list[SelectedConnection]
+    wildcard: SelectedNote | None
+    forgotten: SelectedNote | None
+    records: list[IssueNote] = field(default_factory=list)
+    wildcard_from_theme: str | None = None
+
+@dataclass
+class ThemeCtx:
+    theme_id: UUID
+    label: str
+    centroid: list[float]
+    last_visited_at: object | None      # datetime | None
+    member_ids: list[UUID]
+
+@dataclass
+class LinkCtx:
+    src: UUID
+    dst: UUID
+    created_at: object | None
+    last_seen_at: object | None
+
+@dataclass
+class SelectionContext:
+    themes: list[ThemeCtx]
+    notes_by_id: dict[UUID, NoteRow]
+    surfaced: dict[UUID, object]         # note_id -> last surfaced date (or None)
+    links: list[LinkCtx]
+    notes_per_issue: int
