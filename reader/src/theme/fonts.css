@@ -1,0 +1,67 @@
+/*
+ * Local @font-face declarations for AgainPage's reader typography.
+ *
+ * These replace the Google Fonts @import in index.css so the production
+ * app never calls out to fonts.googleapis.com / fonts.gstatic.com.
+ *
+ * The actual .woff2 binaries are NOT checked into source control here —
+ * see reader/public/fonts/README.md for how to obtain and place them.
+ * Vite does not fail the build if a referenced public asset is missing;
+ * browsers simply fall back to the next font in the stack (Georgia /
+ * ui-monospace) until the files are added.
+ */
+
+/* Bodoni Moda — display font (used at weight 500 and 600, roman + italic) */
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/bodoni-moda-v33-latin-500.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: italic;
+  font-weight: 500;
+  font-display: swap;
+  src: url('/fonts/bodoni-moda-v33-latin-500italic.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/bodoni-moda-v33-latin-600.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Bodoni Moda';
+  font-style: italic;
+  font-weight: 600;
+  font-display: swap;
+  src: url('/fonts/bodoni-moda-v33-latin-600italic.woff2') format('woff2');
+}
+
+/* Newsreader — body font (used at weight 400, roman + italic) */
+@font-face {
+  font-family: 'Newsreader';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/newsreader-v22-latin-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Newsreader';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/newsreader-v22-latin-400italic.woff2') format('woff2');
+}
+
+/* Source Code Pro — mono font (used at regular weight 400) */
+@font-face {
+  font-family: 'Source Code Pro';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/source-code-pro-v23-latin-regular.woff2') format('woff2');
+}
