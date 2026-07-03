@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { usePlatform } from '../../platform'
 import { color, font } from '../../theme/tokens'
 import type { Provider, Settings, SettingsPatch } from '../../types/settings'
@@ -44,6 +44,10 @@ export function AiSourcePanel({
   const [ollamaKey, setOllamaKey] = useState('')
   const [testStatus, setTestStatus] = useState<TestStatus>('idle')
   const [provider, setProvider] = useState<Provider>(settings.provider)
+
+  // Keep the local provider tab in sync if the canonical settings change externally
+  // (e.g. a query refetch after a save resolves with a different provider).
+  useEffect(() => { setProvider(settings.provider) }, [settings.provider])
 
   const isOR = provider === 'openrouter'
   const isOL = provider === 'ollama'
