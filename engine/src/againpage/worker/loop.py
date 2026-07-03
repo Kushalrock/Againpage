@@ -1,6 +1,6 @@
 from __future__ import annotations
 import asyncio
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timedelta
 from againpage.core.models import SettingsRow, NewIssue
 from againpage.queue.queue import Queue, Job
 from againpage.storage.repository import Repository
@@ -69,7 +69,9 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
         import time as _t
         if _t.monotonic() - last_tick > 60:
             last_tick = _t.monotonic()
-            await scheduler.tick(now=datetime.now(timezone.utc))
+            # Local (naive) now: delivery_time is the user's local wall-clock, and the
+            # cadence day-gap is measured in the user's local days — not UTC.
+            await scheduler.tick(now=datetime.now())
 
 def main() -> None:  # pragma: no cover
     import os
