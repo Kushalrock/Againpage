@@ -4,6 +4,7 @@ import { NotesFolderPanel } from '../components/settings/NotesFolderPanel'
 import { AiSourcePanel } from '../components/settings/AiSourcePanel'
 import { ExcludedPathsPanel } from '../components/settings/ExcludedPathsPanel'
 import { PreferencesPanel } from '../components/settings/PreferencesPanel'
+import { AdvancedPanel } from '../components/settings/AdvancedPanel'
 import { color, font } from '../theme/tokens'
 import type { SettingsPatch } from '../types/settings'
 
@@ -55,6 +56,8 @@ export function Settings() {
       />
 
       <PreferencesPanel settings={data} onChange={(patch) => scheduleSave(patch)} />
+
+      <AdvancedPanel noteCount={data.vault_note_count} />
     </div>
   )
 }
