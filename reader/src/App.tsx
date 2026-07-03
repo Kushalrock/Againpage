@@ -17,8 +17,8 @@ export default function App() {
   if (needsOnboarding) return <Onboarding onDone={() => { setOnboarded(true); setScreen('today') }} />
   return (
     <AppShell active={screen} onNavigate={(s) => setScreen(s as Screen)}>
-      {screen === 'today' && <Today />}
-      {screen === 'archive' && <Archive onOpen={() => setScreen('today')} />}
+      {screen === 'today' && <Today onNavigate={(s) => setScreen(s as Screen)} />}
+      {screen === 'archive' && <Archive onOpen={() => setScreen('today')} onNavigate={(s) => setScreen(s as Screen)} />}
       {screen === 'settings' && <Settings />}
     </AppShell>
   )
