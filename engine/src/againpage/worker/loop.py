@@ -35,6 +35,14 @@ async def handle_generate(job: Job, *, repo: Repository, provider: Provider, set
         word_target=word_target(settings.reading_min), content=issue.model_dump(),
         payload=payload, model=settings.writer_model))
 
+async def handle_ingest(job: Job, *, repo, provider, queue, settings) -> None:
+    path = job.payload.get("path")
+    if path:
+        await ingest_file(path, repo=repo, provider=provider, settings=settings, user_id=settings.user_id)
+    elif settings.vault_path:
+        await ingest_vault(settings.vault_path, repo=repo, provider=provider, settings=settings, user_id=settings.user_id)
+        await queue.enqueue("cluster", {})   # chain a re-cluster after a full-vault ingest
+
 async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     queue = Queue(pool)
     repo = Repository(pool)
@@ -55,12 +63,7 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
                 else:
                     await handle_generate(job, repo=repo, provider=provider, settings=settings)
             elif job.type == "ingest":
-                path = job.payload.get("path")
-                if path:
-                    await ingest_file(path, repo=repo, provider=provider, settings=settings, user_id=settings.user_id)
-                elif settings.vault_path:
-                    await ingest_vault(settings.vault_path, repo=repo, provider=provider,
-                                       settings=settings, user_id=settings.user_id)
+                await handle_ingest(job, repo=repo, provider=provider, queue=queue, settings=settings)
             elif job.type == "cluster":
                 await run_cluster(settings.user_id, repo=repo, provider=provider, settings=settings)
             await queue.complete(job.id)
