@@ -2,7 +2,6 @@ use std::process::{Child, Command};
 use std::path::PathBuf;
 use crate::keychain::keychain_get_impl;
 
-#[allow(dead_code)]
 pub struct Supervisor {
     pub db_url: String,
     pub api_port: u16,
@@ -11,7 +10,6 @@ pub struct Supervisor {
     worker: Option<Child>,
 }
 
-#[allow(dead_code)]
 impl Supervisor {
     pub fn new(db_url: String, api_port: u16, engine_dir: PathBuf) -> Self {
         Supervisor { db_url, api_port, engine_dir, api: None, worker: None }
@@ -41,18 +39,38 @@ impl Supervisor {
         Ok(())
     }
 
-    /// Call periodically from a monitor thread; restarts a dead child.
-    pub fn tick(&mut self) {
-        if let Some(c) = self.worker.as_mut() {
-            if matches!(c.try_wait(), Ok(Some(_))) {
-                self.worker = self.spawn("againpage-worker", &[]).ok();
+    /// Call periodically from a monitor thread; (re)starts a dead or
+    /// never-successfully-spawned child. Non-blocking (`try_wait`, not
+    /// `wait`). Returns `true` if a (re)spawn was attempted for either
+    /// child this call, `false` if both children are already running (or
+    /// still healthy per `try_wait`) — callers use this to key backoff off
+    /// actual restart events rather than elapsed polls.
+    pub fn tick(&mut self) -> bool {
+        let mut restarted = false;
+
+        let worker_needs_spawn = match self.worker.as_mut() {
+            Some(c) => matches!(c.try_wait(), Ok(Some(_))),
+            None => true,
+        };
+        if worker_needs_spawn {
+            if let Ok(child) = self.spawn("againpage-worker", &[]) {
+                self.worker = Some(child);
+                restarted = true;
             }
         }
-        if let Some(c) = self.api.as_mut() {
-            if matches!(c.try_wait(), Ok(Some(_))) {
-                self.api = self.spawn("againpage-api", &[]).ok();
+
+        let api_needs_spawn = match self.api.as_mut() {
+            Some(c) => matches!(c.try_wait(), Ok(Some(_))),
+            None => true,
+        };
+        if api_needs_spawn {
+            if let Ok(child) = self.spawn("againpage-api", &[]) {
+                self.api = Some(child);
+                restarted = true;
             }
         }
+
+        restarted
     }
 
     pub fn shutdown(&mut self) {

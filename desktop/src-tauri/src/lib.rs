@@ -68,21 +68,17 @@ fn boot_sidecars(app: &tauri::App) -> Result<(), String> {
     *state.supervisor.lock().unwrap() = Some(supervisor);
     *state.api_base.lock().unwrap() = Some(api_base);
 
-    // Monitor thread: periodic tick() with capped exponential backoff between
-    // restart bursts, so a sidecar that keeps crash-looping doesn't spin the
-    // CPU respawning every 2s forever.
+    // Monitor thread: polls at a fixed base cadence normally so a crashed
+    // child is detected and retried within ~one base interval. Backoff is
+    // keyed off actual restart events (tick() returning true), not elapsed
+    // polls: each consecutive tick that (re)spawns something doubles the
+    // next delay (capped at max_delay), so a crash-looping child stops
+    // spinning the CPU/logs. A single healthy tick (nothing to restart)
+    // resets the delay back to base_delay immediately.
     let handle = app.handle().clone();
     std::thread::spawn(move || {
         let base_delay = Duration::from_secs(2);
         let max_delay = Duration::from_secs(30);
-        // Consecutive ticks are spaced `base_delay` apart normally. Every
-        // `BACKOFF_AFTER` ticks in a row we double-check nothing is
-        // crash-looping by widening the *next* sleep, capped at `max_delay`,
-        // then reset back to `base_delay`. This bounds worst-case restart
-        // spin (CPU/log noise) without needing `tick()` to report whether it
-        // actually respawned anything (it intentionally doesn't, per brief).
-        const BACKOFF_AFTER: u32 = 3;
-        let mut ticks_since_backoff = 0u32;
         let mut delay = base_delay;
         loop {
             std::thread::sleep(delay);
@@ -92,12 +88,10 @@ fn boot_sidecars(app: &tauri::App) -> Result<(), String> {
                 // Supervisor was torn down (shutdown in progress) — stop polling.
                 break;
             };
-            sup.tick();
+            let restarted = sup.tick();
             drop(guard);
 
-            ticks_since_backoff += 1;
-            delay = if ticks_since_backoff >= BACKOFF_AFTER {
-                ticks_since_backoff = 0;
+            delay = if restarted {
                 (delay * 2).min(max_delay)
             } else {
                 base_delay
