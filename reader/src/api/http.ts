@@ -1,6 +1,7 @@
 import type { ApiClient } from './client'
+import { apiBase } from './base'
 
-export function httpClient(baseUrl = 'http://localhost:8000'): ApiClient {
+export function httpClient(baseUrl = apiBase()): ApiClient {
   const get = async (p: string) => {
     const res = await fetch(baseUrl + p)
     if (!res.ok) throw new Error(`${p} → ${res.status}`)

@@ -1,6 +1,7 @@
 import type { ConnectionTest } from './index'
 import type { ProviderTestRequest, ProviderTestResult } from '../types/settings'
-export function httpConnectionTest(baseUrl = 'http://localhost:8000'): ConnectionTest {
+import { apiBase } from '../api/base'
+export function httpConnectionTest(baseUrl = apiBase()): ConnectionTest {
   return {
     async run(req: ProviderTestRequest): Promise<ProviderTestResult> {
       const res = await fetch(baseUrl + '/provider/test', {
