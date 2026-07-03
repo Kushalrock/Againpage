@@ -10,26 +10,6 @@ const CADENCE_LABELS: { label: string; value: Cadence }[] = [
 ]
 
 const NOTES_OPTIONS = [2, 3, 4, 5]
-const TIME_OPTIONS = ['6:00 am', '7:00 am', '8:00 am', '8:00 pm']
-
-function to12h(hhmm: string): string {
-  const [hStr, m] = hhmm.split(':')
-  let h = Number(hStr)
-  const suffix = h >= 12 ? 'pm' : 'am'
-  h = h % 12
-  if (h === 0) h = 12
-  return `${h}:${m ?? '00'} ${suffix}`
-}
-function to24h(label: string): string {
-  const m = /^(\d+):(\d+)\s*(am|pm)$/i.exec(label.trim())
-  if (!m) return label
-  let h = Number(m[1])
-  const min = m[2]
-  const suffix = m[3].toLowerCase()
-  if (suffix === 'pm' && h !== 12) h += 12
-  if (suffix === 'am' && h === 12) h = 0
-  return `${String(h).padStart(2, '0')}:${min}`
-}
 
 const segStyle = (active: boolean) => ({
   background: active ? color.dark : color.card,
@@ -120,18 +100,10 @@ export function PreferencesPanel({
 
         <div>
           <div style={{ fontSize: 14, color: color.muted, marginBottom: 10 }}>Delivery time</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            {TIME_OPTIONS.map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => onChange({ delivery_time: to24h(t) })}
-                style={segStyle(to12h(settings.delivery_time) === t)}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
+          <input aria-label="Delivery time" type="time" value={settings.delivery_time}
+            onChange={(e) => onChange({ delivery_time: e.target.value })}
+            style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+              padding: '10px 14px', fontSize: 15, color: color.inkStrong, fontFamily: "'Source Code Pro', monospace" }} />
         </div>
 
         <div>
