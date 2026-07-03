@@ -115,4 +115,39 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
         return VaultStatus(vault_path=s.vault_path or "", note_count=_count(s),
             scanned_at=datetime.now(timezone.utc).isoformat())
 
+    from againpage.api.schemas import AppStatus
+    from againpage.scheduler.scheduler import Scheduler
+
+    @r.post("/reindex")
+    async def reindex():
+        if queue is None:
+            raise HTTPException(503, "queue unavailable")
+        uid = await repo.ensure_local_user()
+        s = await repo.get_settings(uid)
+        if not s or not s.vault_path:
+            raise HTTPException(409, "no notes folder set")
+        job_id = await queue.enqueue("ingest", {})
+        return {"job_id": str(job_id)}
+
+    @r.get("/status")
+    async def status():
+        uid = await repo.ensure_local_user()
+        s = await repo.get_settings(uid)
+        themes = await repo.themes(uid)
+        notes = await repo.active_notes(uid)
+        issues = await repo.list_issues(uid)
+        indexed = len(themes) > 0
+        latest = issues[0] if issues else None
+        next_edition_at = None
+        if indexed and s and s.delivery_time:
+            nd = Scheduler(repo, queue).next_due(
+                s, now=datetime.now(), last_issue_date=(latest.issue_date if latest else None))
+            next_edition_at = nd.isoformat()
+        return AppStatus(
+            indexed=indexed, theme_count=len(themes), note_count=len(notes), issue_count=len(issues),
+            latest_issue_date=(latest.issue_date.isoformat() if latest else None),
+            next_edition_at=next_edition_at,
+            delivery_time=(s.delivery_time.strftime("%H:%M") if s and s.delivery_time else "07:00"),
+            cadence=(s.cadence if s else "daily"))
+
     return r

@@ -58,3 +58,13 @@ class VaultStatus(BaseModel):
     vault_path: str
     note_count: int
     scanned_at: str
+
+class AppStatus(BaseModel):
+    indexed: bool
+    theme_count: int
+    note_count: int
+    issue_count: int
+    latest_issue_date: str | None
+    next_edition_at: str | None
+    delivery_time: str
+    cadence: str
