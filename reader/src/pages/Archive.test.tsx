@@ -1,20 +1,37 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ClientContext } from '../api/queries'
-import { fixtureClient } from '../api/fixtures'
+import type { ApiClient } from '../api/client'
+import { ARCHIVE } from '../api/fixtures'
+import type { AppStatus } from '../types/status'
 import { Archive } from './Archive'
 
-function wrap(onOpen: (id: string) => void = () => {}) {
+const S = (o: Partial<AppStatus>): AppStatus => ({ indexed: true, theme_count: 1, note_count: 5,
+  issue_count: 0, latest_issue_date: null, next_edition_at: '2999-01-01T07:00:00', delivery_time: '07:00', cadence: 'daily', ...o })
+function mk(status: AppStatus, populated: boolean): ApiClient {
+  return { getTodayIssue: async () => ({}) as never, getIssue: async () => ({}) as never,
+    getArchive: async () => (populated ? ARCHIVE : { groups: [], total: 0 }),
+    getSettings: async () => ({}) as never, saveSettings: async () => ({}) as never,
+    getStatus: async () => status, reindex: async () => ({ job_id: 'i' }), triggerIssue: async () => ({ job_id: 'g' }) }
+}
+function wrap(client: ApiClient, onOpen: (id: string) => void = () => {}, onNavigate: (s: string) => void = () => {}) {
   const qc = new QueryClient()
   return render(<QueryClientProvider client={qc}>
-    <ClientContext.Provider value={fixtureClient}><Archive onOpen={onOpen} /></ClientContext.Provider>
+    <ClientContext.Provider value={client}><Archive onOpen={onOpen} onNavigate={onNavigate} /></ClientContext.Provider>
   </QueryClientProvider>)
 }
-test('renders grouped archive and fires onOpen', async () => {
+test('empty + not indexed → compose nudge', async () => {
+  wrap(mk(S({ indexed: false, theme_count: 0 }), false))
+  expect(await screen.findByText(/compose your themes/i)).toBeInTheDocument()
+})
+test('empty + indexed → bound-volumes placeholder', async () => {
+  wrap(mk(S({}), false))
+  expect(await screen.findByText(/bound volumes fill as editions are composed/i)).toBeInTheDocument()
+})
+test('populated → grouped archive + onOpen', async () => {
   const opened: string[] = []
-  wrap((id) => opened.push(id))
-  expect(await screen.findByText(/The Archive/i)).toBeInTheDocument()
-  expect(screen.getByText(/This week/i)).toBeInTheDocument()
+  wrap(mk(S({ issue_count: 7 }), true), (id) => opened.push(id))
+  expect(await screen.findByText(/This week/i)).toBeInTheDocument()
   fireEvent.click(screen.getByText(/Amor Fati/i))
   expect(opened.length).toBe(1)
 })

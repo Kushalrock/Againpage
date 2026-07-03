@@ -1,9 +1,36 @@
-import { useArchive } from '../api/queries'
+import { useArchive, useStatus } from '../api/queries'
 import { color, font } from '../theme/tokens'
 
-export function Archive({ onOpen }: { onOpen: (id: string) => void }) {
-  const { data, isLoading } = useArchive()
-  if (isLoading || !data) return <div style={{ padding: 48 }}>Loading past editions…</div>
+export function Archive({ onOpen, onNavigate }: { onOpen: (id: string) => void; onNavigate?: (screen: string) => void }) {
+  const status = useStatus()
+  const archive = useArchive()
+  if (status.isLoading || archive.isLoading) return <div style={{ padding: 48 }}>Loading…</div>
+  const s = status.data!
+  const groups = archive.data?.groups ?? []
+  const empty = (archive.data?.total ?? 0) === 0
+  const whenLabel = (iso: string | null) => iso ? new Date(iso).toLocaleString('en-GB',
+    { weekday: 'long', hour: 'numeric', minute: '2-digit', hour12: true }) : ''
+
+  if (empty && !s.indexed) {
+    return (
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(56px,10vw,120px) 24px', textAlign: 'center' }}>
+        <h1 style={{ fontFamily: font.display, fontWeight: 500, fontSize: 'clamp(30px,4.6vw,46px)', color: color.inkStrong }}>The Archive is empty.</h1>
+        <p style={{ fontSize: 18, color: color.muted, marginTop: 18 }}>Once your themes are composed and an edition is generated, your bound volumes will begin here.</p>
+        <button type="button" onClick={() => onNavigate?.('settings')}
+          style={{ marginTop: 26, background: color.dark, color: color.paper, border: 'none', borderRadius: 6, padding: '14px 28px', fontSize: 16, cursor: 'pointer', fontFamily: font.body }}>
+          Compose your themes</button>
+      </div>
+    )
+  }
+  if (empty) {
+    return (
+      <div style={{ maxWidth: 640, margin: '0 auto', padding: 'clamp(56px,10vw,120px) 24px', textAlign: 'center' }}>
+        <h1 style={{ fontFamily: font.display, fontWeight: 500, fontSize: 'clamp(30px,4.6vw,46px)', color: color.inkStrong }}>The Archive</h1>
+        <p style={{ fontSize: 18, color: color.muted, marginTop: 18, fontStyle: 'italic' }}>
+          The bound volumes fill as editions are composed. Your first arrives {whenLabel(s.next_edition_at)}.</p>
+      </div>
+    )
+  }
   return (
     <div style={{ maxWidth: 920, margin: '0 auto', padding: 'clamp(40px,6vw,72px) clamp(24px,5vw,40px) 80px' }}>
       <header style={{ textAlign: 'center', borderBottom: `2px solid ${color.dark}`, paddingBottom: 28 }}>
@@ -18,7 +45,7 @@ export function Archive({ onOpen }: { onOpen: (id: string) => void }) {
           Every edition AgainPage has composed for you. Forty-seven mornings, and counting.
         </p>
       </header>
-      {data.groups.map((g) => (
+      {groups.map((g) => (
         <div key={g.label} style={{ marginTop: 40 }}>
           <div style={{ fontSize: 11, letterSpacing: '.2em', textTransform: 'uppercase', color: color.faint,
             fontWeight: 600, marginBottom: 6 }}>
