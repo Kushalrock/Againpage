@@ -15,3 +15,12 @@ export const browserFolderPicker: FolderPicker = {
 export { tauriFolderPicker } from './folderPicker'
 export { tauriKeyStore } from './keyStore'
 export { httpConnectionTest } from './connectionTest'
+
+import { createContext, useContext } from 'react'
+import { httpConnectionTest } from './connectionTest'
+export interface Platform { folderPicker: FolderPicker; keyStore: KeyStore; connectionTest: ConnectionTest }
+export const PlatformContext = createContext<Platform>({
+  folderPicker: browserFolderPicker, keyStore: browserKeyStore,
+  connectionTest: httpConnectionTest(),
+})
+export const usePlatform = () => useContext(PlatformContext)
