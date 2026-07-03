@@ -16,11 +16,19 @@ export function httpClient(baseUrl = apiBase()): ApiClient {
     if (!res.ok) throw new Error(`${p} → ${res.status}`)
     return res.json()
   }
+  const post = async (p: string) => {
+    const res = await fetch(baseUrl + p, { method: 'POST' })
+    if (!res.ok) throw new Error(`${p} → ${res.status}`)
+    return res.json()
+  }
   return {
     getTodayIssue: () => get('/issues/today'),
     getIssue: (id) => get(`/issues/${id}`),
     getArchive: () => get('/issues'),
     getSettings: () => get('/settings'),
     saveSettings: (patch) => put('/settings', patch),
+    getStatus: () => get('/status'),
+    reindex: () => post('/reindex'),
+    triggerIssue: () => post('/trigger'),
   }
 }

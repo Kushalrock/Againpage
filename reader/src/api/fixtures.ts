@@ -3,6 +3,11 @@ import type { IssueResponse } from '../types/issue'
 import type { ArchiveResponse } from '../types/archive'
 import type { Settings, SettingsResponse, SettingsPatch } from '../types/settings'
 
+export const STATUS: import('../types/status').AppStatus = {
+  indexed: false, theme_count: 0, note_count: 1284, issue_count: 0,
+  latest_issue_date: null, next_edition_at: null, delivery_time: '07:00', cadence: 'daily',
+}
+
 export const AMOR_FATI: IssueResponse = {
   id: 'fixture-47',
   issue_no: 47,
@@ -331,4 +336,7 @@ export const fixtureClient: ApiClient = {
     Object.assign(SETTINGS, patch)
     return { ...SETTINGS, vault_note_count: vaultNoteCount }
   },
+  getStatus: async () => STATUS,
+  reindex: async () => ({ job_id: 'fixture-ingest' }),
+  triggerIssue: async () => ({ job_id: 'fixture-generate' }),
 }

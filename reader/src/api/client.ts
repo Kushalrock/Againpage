@@ -7,4 +7,7 @@ export interface ApiClient {
   getArchive(): Promise<ArchiveResponse>
   getSettings(): Promise<import('../types/settings').SettingsResponse>
   saveSettings(patch: import('../types/settings').SettingsPatch): Promise<import('../types/settings').SettingsResponse>
+  getStatus(): Promise<import('../types/status').AppStatus>
+  reindex(): Promise<{ job_id: string }>
+  triggerIssue(): Promise<{ job_id: string }>
 }

@@ -27,3 +27,16 @@ export function useSaveSettings() {
     onSuccess: (data) => { queryClient.setQueryData(['settings'], data) },
   })
 }
+export function useStatus(opts?: { refetchInterval?: number | false }) {
+  const client = useClient()
+  return useQuery({ queryKey: ['status'], queryFn: () => client.getStatus(),
+    refetchInterval: opts?.refetchInterval ?? false })
+}
+export function useReindex() {
+  const client = useClient()
+  return useMutation({ mutationFn: () => client.reindex() })
+}
+export function useTriggerIssue() {
+  const client = useClient()
+  return useMutation({ mutationFn: () => client.triggerIssue() })
+}
