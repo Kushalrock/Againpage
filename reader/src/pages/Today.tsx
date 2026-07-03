@@ -13,8 +13,9 @@ function whenLabel(iso: string | null): string {
 export function Today({ onNavigate }: { onNavigate?: (screen: string) => void }) {
   const status = useStatus()
   const cd = useCountdown(status.data?.next_edition_at ?? null)
-  // poll for the fresh edition while it's being composed
-  const issue = useTodayIssue()
+  // While the edition is being composed, poll BOTH status and today's issue so the
+  // fresh edition swaps in automatically the moment the worker finishes.
+  const issue = useTodayIssue({ refetchInterval: cd.due ? 30_000 : false })
   const [minutes, setMinutes] = useState<number | null>(null)
   useStatus({ refetchInterval: cd.due ? 30_000 : false })
 

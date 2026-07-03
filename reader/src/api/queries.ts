@@ -7,9 +7,10 @@ import type { SettingsPatch } from '../types/settings'
 export const ClientContext = createContext<ApiClient>(httpClient())
 export const useClient = () => useContext(ClientContext)
 
-export function useTodayIssue() {
+export function useTodayIssue(opts?: { refetchInterval?: number | false }) {
   const client = useClient()
-  return useQuery({ queryKey: ['issue', 'today'], queryFn: () => client.getTodayIssue() })
+  return useQuery({ queryKey: ['issue', 'today'], queryFn: () => client.getTodayIssue(),
+    refetchInterval: opts?.refetchInterval ?? false, retry: false })
 }
 export function useArchive() {
   const client = useClient()
