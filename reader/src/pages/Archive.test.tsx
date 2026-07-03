@@ -4,7 +4,7 @@ import { ClientContext } from '../api/queries'
 import { fixtureClient } from '../api/fixtures'
 import { Archive } from './Archive'
 
-function wrap(onOpen = () => {}) {
+function wrap(onOpen: (id: string) => void = () => {}) {
   const qc = new QueryClient()
   return render(<QueryClientProvider client={qc}>
     <ClientContext.Provider value={fixtureClient}><Archive onOpen={onOpen} /></ClientContext.Provider>
