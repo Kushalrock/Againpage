@@ -5,7 +5,7 @@ import type { Settings, SettingsResponse, SettingsPatch } from '../types/setting
 
 export const STATUS: import('../types/status').AppStatus = {
   indexed: true, theme_count: 12, note_count: 1284, issue_count: 47,
-  latest_issue_date: '2026-06-30', next_edition_at: null, delivery_time: '07:00', cadence: 'daily',
+  latest_issue_date: '2026-06-30', next_edition_at: null, delivery_time: '07:00', cadence_days: 1,
   active_jobs: [],
 }
 
@@ -316,7 +316,7 @@ const SETTINGS: Settings = {
   vault_path: '~/Documents/Athenaeum',
   excluded_paths: ['./Templates', './Daily notes', '~/Vault/Private'],
   profile_text: '',
-  cadence: 'daily',
+  cadence_days: 1,
   delivery_time: '07:00',
   reading_min: 7,
   notes_per_issue: 3,

@@ -1,13 +1,9 @@
+import { useState } from 'react'
 import { lengthLabel } from '../../lib/readingLength'
+import { useStatus } from '../../api/queries'
+import { useCountdown, nextEditionAt } from '../../lib/countdown'
 import { color, font } from '../../theme/tokens'
-import type { Cadence, Settings, SettingsPatch } from '../../types/settings'
-
-const CADENCE_LABELS: { label: string; value: Cadence }[] = [
-  { label: 'Daily', value: 'daily' },
-  { label: 'Every few days', value: 'few_days' },
-  { label: 'Weekly', value: 'weekly' },
-  { label: 'Every two weeks', value: 'biweekly' },
-]
+import type { Settings, SettingsPatch } from '../../types/settings'
 
 const NOTES_OPTIONS = [2, 3, 4, 5]
 
@@ -21,6 +17,11 @@ const segStyle = (active: boolean) => ({
   cursor: 'pointer',
 } as const)
 
+const stepStyle = {
+  background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+  width: 38, height: 40, fontSize: 20, color: color.inkStrong, cursor: 'pointer', lineHeight: 1,
+} as const
+
 export function PreferencesPanel({
   settings,
   onChange,
@@ -28,30 +29,44 @@ export function PreferencesPanel({
   settings: Settings
   onChange: (patch: SettingsPatch) => void
 }) {
+  const status = useStatus()
+  // Local state so the day input edits smoothly (server round-trip doesn't snap it back).
+  const [days, setDays] = useState(settings.cadence_days)
+
+  function setCadence(n: number) {
+    const v = Math.max(1, Math.min(90, Math.round(n) || 1))
+    setDays(v)
+    onChange({ cadence_days: v })
+  }
+
+  // Live preview of when the next edition lands, from the delivery time + gap.
+  const target = nextEditionAt(settings.delivery_time, days, status.data?.latest_issue_date ?? null, new Date())
+  const cd = useCountdown(target)
+
   return (
     <div style={{ padding: '28px 0', borderBottom: `1px solid ${color.border}` }}>
-      <div
-        style={{
-          fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: color.faint,
-          fontWeight: 600, marginBottom: 18,
-        }}
-      >
+      <div style={{ fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: color.faint,
+        fontWeight: 600, marginBottom: 18 }}>
         Preferences
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
         <div>
           <div style={{ fontSize: 14, color: color.muted, marginBottom: 10 }}>How often editions arrive</div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {CADENCE_LABELS.map((o) => (
-              <button
-                key={o.value}
-                type="button"
-                onClick={() => onChange({ cadence: o.value })}
-                style={segStyle(settings.cadence === o.value)}
-              >
-                {o.label}
-              </button>
-            ))}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 15, color: color.muted }}>Every</span>
+            <button type="button" aria-label="fewer days" style={stepStyle} onClick={() => setCadence(days - 1)}>−</button>
+            <input aria-label="days between editions" type="number" min={1} max={90} value={days}
+              onChange={(e) => setCadence(+e.target.value)}
+              style={{ width: 64, textAlign: 'center', background: color.card, border: `1px solid ${color.borderStrong}`,
+                borderRadius: 5, padding: '10px 8px', fontSize: 16, color: color.inkStrong,
+                fontFamily: "'Source Code Pro', monospace" }} />
+            <button type="button" aria-label="more days" style={stepStyle} onClick={() => setCadence(days + 1)}>+</button>
+            <span style={{ fontSize: 15, color: color.muted }}>{days === 1 ? 'day' : 'days'}</span>
+          </div>
+          <div style={{ fontSize: 13, color: color.faint, marginTop: 8, fontStyle: 'italic' }}>
+            {cd.due
+              ? 'Your next edition is being composed…'
+              : `Your next edition arrives ${cd.label} · ${days === 1 ? 'daily' : `every ${days} days`} at ${settings.delivery_time}`}
           </div>
         </div>
 
@@ -62,28 +77,16 @@ export function PreferencesPanel({
               {settings.reading_min} min · {lengthLabel(settings.reading_min)}
             </span>
           </div>
-          <input
-            className="ap-range"
-            type="range"
-            min={3}
-            max={15}
-            step={1}
-            value={settings.reading_min}
-            onChange={(e) => onChange({ reading_min: Number(e.target.value) })}
-            style={{ width: '100%' }}
-          />
+          <input className="ap-range" type="range" min={3} max={15} step={1} value={settings.reading_min}
+            onChange={(e) => onChange({ reading_min: Number(e.target.value) })} style={{ width: '100%' }} />
         </div>
 
         <div>
           <div style={{ fontSize: 14, color: color.muted, marginBottom: 10 }}>Notes woven per edition</div>
           <div style={{ display: 'flex', gap: 8 }}>
             {NOTES_OPTIONS.map((n) => (
-              <button
-                key={n}
-                type="button"
-                onClick={() => onChange({ notes_per_issue: n })}
-                style={segStyle(settings.notes_per_issue === n)}
-              >
+              <button key={n} type="button" onClick={() => onChange({ notes_per_issue: n })}
+                style={segStyle(settings.notes_per_issue === n)}>
                 {n}
               </button>
             ))}

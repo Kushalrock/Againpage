@@ -15,7 +15,7 @@ class LabelProvider:
 
 def _settings(uid):
     return SettingsRow(user_id=uid, vault_path="/v", excluded_paths=[], profile_text=None,
-        cadence="daily", delivery_time=time(7), reading_min=5, notes_per_issue=3,
+        cadence_days=1, delivery_time=time(7), reading_min=5, notes_per_issue=3,
         provider="openrouter", ollama_endpoint="", embed_model="e", summary_model="s", writer_model="w")
 
 async def test_run_cluster_populates_themes():

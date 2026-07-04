@@ -2,7 +2,6 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 from againpage.core.models import SettingsRow
 
-_MIN_GAP = {"daily": 1, "few_days": 3, "weekly": 7, "biweekly": 14}
 
 class Scheduler:
     def __init__(self, repo, queue):
@@ -14,7 +13,7 @@ class Scheduler:
             return False
         if last_issue_date is None:
             return True
-        gap = _MIN_GAP.get(settings.cadence, 1)
+        gap = max(1, settings.cadence_days)
         return (now.date() - last_issue_date).days >= gap
 
     def next_due(self, settings: SettingsRow, *, now: datetime, last_issue_date: date | None) -> datetime:
@@ -22,7 +21,7 @@ class Scheduler:
         if last_issue_date is None:
             d = now.date()
         else:
-            d = last_issue_date + timedelta(days=_MIN_GAP.get(settings.cadence, 1))
+            d = last_issue_date + timedelta(days=max(1, settings.cadence_days))
         return datetime(d.year, d.month, d.day, dt.hour, dt.minute)
 
     async def tick(self, *, now: datetime) -> bool:

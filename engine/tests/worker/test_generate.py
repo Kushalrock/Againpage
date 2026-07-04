@@ -18,7 +18,7 @@ class FakeProvider:
 
 def _settings(uid) -> SettingsRow:
     return SettingsRow(user_id=uid, vault_path=None, excluded_paths=[], profile_text=None,
-        cadence="daily", delivery_time=time(7), reading_min=7, notes_per_issue=3,
+        cadence_days=1, delivery_time=time(7), reading_min=7, notes_per_issue=3,
         provider="openrouter", ollama_endpoint="", embed_model=None,
         summary_model=None, writer_model="anthropic/claude-sonnet-4.6")
 

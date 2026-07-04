@@ -4,14 +4,8 @@ import { usePlatform } from '../platform'
 import { lengthLabel } from '../lib/readingLength'
 import { PROVIDER_DEFAULTS } from '../lib/providerDefaults'
 import { color, font } from '../theme/tokens'
-import type { Cadence, Provider, SettingsPatch } from '../types/settings'
+import type { Provider, SettingsPatch } from '../types/settings'
 
-const FREQ_OPTIONS: { label: string; value: Cadence }[] = [
-  { label: 'Daily', value: 'daily' },
-  { label: 'Every few days', value: 'few_days' },
-  { label: 'Weekly', value: 'weekly' },
-  { label: 'Every two weeks', value: 'biweekly' },
-]
 const NOTES_OPTIONS = [2, 3, 4, 5]
 const TIME_OPTIONS = ['6:00 am', '7:00 am', '8:00 am', '8:00 pm']
 
@@ -66,7 +60,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [folder, setFolder] = useState<{ path: string; count: number } | null>(null)
   const [aiSource, setAiSource] = useState<Provider | ''>('')
   const [apiKey, setApiKey] = useState('')
-  const [cadence, setCadence] = useState<Cadence>('daily')
+  const [cadenceDays, setCadenceDays] = useState(1)
   const [readingMin, setReadingMin] = useState(7)
   const [notesPerIssue, setNotesPerIssue] = useState(3)
   const [deliveryTime, setDeliveryTime] = useState('07:00')
@@ -88,7 +82,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       vault_path: folder?.path ?? '',
       provider,
       ...PROVIDER_DEFAULTS[provider],
-      cadence,
+      cadence_days: cadenceDays,
       reading_min: readingMin,
       notes_per_issue: notesPerIssue,
       delivery_time: deliveryTime,
@@ -254,12 +248,20 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 24 }}>
                 <div>
                   <div style={{ ...labelStyle, letterSpacing: '.16em', marginBottom: 10 }}>How often</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {FREQ_OPTIONS.map((o) => (
-                      <button key={o.value} type="button" onClick={() => setCadence(o.value)} style={segStyle(cadence === o.value)}>
-                        {o.label}
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <span style={{ fontSize: 15, color: color.muted }}>Every</span>
+                    <button type="button" aria-label="fewer days"
+                      onClick={() => setCadenceDays((d) => Math.max(1, d - 1))}
+                      style={{ ...segStyle(false), width: 40, fontSize: 20, padding: '8px 0' }}>−</button>
+                    <input aria-label="days between editions" type="number" min={1} max={90} value={cadenceDays}
+                      onChange={(e) => setCadenceDays(Math.max(1, Math.min(90, Math.round(+e.target.value) || 1)))}
+                      style={{ width: 64, textAlign: 'center', background: color.card,
+                        border: `1px solid ${color.borderStrong}`, borderRadius: 5, padding: '9px 8px',
+                        fontSize: 16, color: color.inkStrong, fontFamily: "'Source Code Pro', monospace" }} />
+                    <button type="button" aria-label="more days"
+                      onClick={() => setCadenceDays((d) => Math.min(90, d + 1))}
+                      style={{ ...segStyle(false), width: 40, fontSize: 20, padding: '8px 0' }}>+</button>
+                    <span style={{ fontSize: 15, color: color.muted }}>{cadenceDays === 1 ? 'day' : 'days'}</span>
                   </div>
                 </div>
                 <div>

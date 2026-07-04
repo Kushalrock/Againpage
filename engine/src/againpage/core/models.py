@@ -49,7 +49,7 @@ class SettingsRow:
     vault_path: str | None
     excluded_paths: list[str]
     profile_text: str | None
-    cadence: str
+    cadence_days: int
     delivery_time: time
     reading_min: int
     notes_per_issue: int

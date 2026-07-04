@@ -7,7 +7,7 @@ import type { AppStatus } from '../types/status'
 import { Archive } from './Archive'
 
 const S = (o: Partial<AppStatus>): AppStatus => ({ indexed: true, theme_count: 1, note_count: 5,
-  issue_count: 0, latest_issue_date: null, next_edition_at: '2999-01-01T07:00:00', delivery_time: '07:00', cadence: 'daily',
+  issue_count: 0, latest_issue_date: null, next_edition_at: '2999-01-01T07:00:00', delivery_time: '07:00', cadence_days: 1,
   active_jobs: [], ...o })
 function mk(status: AppStatus, populated: boolean): ApiClient {
   return { getTodayIssue: async () => ({}) as never, getIssue: async () => ({}) as never,

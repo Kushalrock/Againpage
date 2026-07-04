@@ -1,8 +1,7 @@
 export type Provider = "openrouter" | "ollama" | "custom";
-export type Cadence = "daily" | "few_days" | "weekly" | "biweekly";
 export interface Settings {
   vault_path: string; excluded_paths: string[]; profile_text: string;
-  cadence: Cadence; delivery_time: string; reading_min: number; notes_per_issue: number;
+  cadence_days: number; delivery_time: string; reading_min: number; notes_per_issue: number;
   provider: Provider; ollama_endpoint: string;
   embed_model: string; summary_model: string; writer_model: string;
 }

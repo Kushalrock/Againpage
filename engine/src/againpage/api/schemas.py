@@ -30,7 +30,7 @@ class SettingsResponse(BaseModel):
     vault_path: str
     excluded_paths: list[str]
     profile_text: str
-    cadence: str
+    cadence_days: int
     delivery_time: str
     reading_min: int
     notes_per_issue: int
@@ -67,5 +67,5 @@ class AppStatus(BaseModel):
     latest_issue_date: str | None
     next_edition_at: str | None
     delivery_time: str
-    cadence: str
+    cadence_days: int
     active_jobs: list[str] = []   # job types currently queued/running (ingest|cluster|generate)

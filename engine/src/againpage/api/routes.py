@@ -12,13 +12,13 @@ from againpage.vault.scan import scan_vault
 def make_provider_for_test(req: ProviderTestRequest):
     # keys come from env; a SettingsRow-lite is enough for the factory
     return make_provider(SettingsRow(user_id=None, vault_path=None, excluded_paths=[],
-        profile_text=None, cadence="daily", delivery_time=None, reading_min=5, notes_per_issue=3,
+        profile_text=None, cadence_days=1, delivery_time=None, reading_min=5, notes_per_issue=3,
         provider=req.provider, ollama_endpoint=req.ollama_endpoint,
         embed_model=req.embed_model, summary_model=req.summary_model, writer_model=req.writer_model))
 
 def _settings_response(s, count: int) -> SettingsResponse:
     return SettingsResponse(vault_path=s.vault_path or "", excluded_paths=s.excluded_paths,
-        profile_text=s.profile_text or "", cadence=s.cadence,
+        profile_text=s.profile_text or "", cadence_days=s.cadence_days,
         delivery_time=s.delivery_time.strftime("%H:%M") if s.delivery_time else "07:00",
         reading_min=s.reading_min, notes_per_issue=s.notes_per_issue, provider=s.provider,
         ollama_endpoint=s.ollama_endpoint, embed_model=s.embed_model or "",
@@ -156,7 +156,7 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
             latest_issue_date=(latest.issue_date.isoformat() if latest else None),
             next_edition_at=next_edition_at,
             delivery_time=(s.delivery_time.strftime("%H:%M") if s and s.delivery_time else "07:00"),
-            cadence=(s.cadence if s else "daily"),
+            cadence_days=(s.cadence_days if s else 1),
             active_jobs=(await queue.active_types() if queue else []))
 
     return r

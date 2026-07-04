@@ -36,11 +36,11 @@ test('Reader compose-themes CTA navigates to Settings when not indexed', async (
   // (fixtureClient's STATUS.indexed is true by default, so it can't be used for this case.)
   const notIndexedStatus: AppStatus = {
     indexed: false, theme_count: 0, note_count: 0, issue_count: 0,
-    latest_issue_date: null, next_edition_at: null, delivery_time: '07:00', cadence: 'daily', active_jobs: [],
+    latest_issue_date: null, next_edition_at: null, delivery_time: '07:00', cadence_days: 1, active_jobs: [],
   }
   const notIndexedSettings: SettingsResponse = {
     vault_path: '~/Documents/Athenaeum', excluded_paths: [], profile_text: '',
-    cadence: 'daily', delivery_time: '07:00', reading_min: 7, notes_per_issue: 3,
+    cadence_days: 1, delivery_time: '07:00', reading_min: 7, notes_per_issue: 3,
     provider: 'openrouter', ollama_endpoint: '',
     embed_model: 'openai/text-embedding-3-small', summary_model: 'openai/gpt-4o-mini',
     writer_model: 'anthropic/claude-3.5-sonnet', vault_note_count: 1284,
