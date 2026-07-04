@@ -36,3 +36,19 @@ def test_status_and_reindex():
         assert s1["indexed"] is True and s1["theme_count"] == 1 and s1["note_count"] == 1
         assert s1["next_edition_at"] is not None and s1["delivery_time"] == "07:00"
         assert client.post("/reindex").json()["job_id"]
+
+
+def test_reindex_force_flag_enqueues_force_payload():
+    from againpage.queue.queue import Queue
+    with start_blocking_portal() as portal:
+        repo = portal.call(_prep)
+        uid = portal.call(repo.ensure_local_user)
+        portal.call(repo.upsert_settings, uid, {"vault_path": "/v"})
+        app = create_app(repo)
+        client = TestClient(app); client.portal = portal
+        q = Queue(repo.pool)
+        assert client.post("/reindex?force=true").json()["job_id"]
+        job = portal.call(q.claim)
+        assert job.type == "ingest" and job.payload == {"force": True}
+        assert client.post("/reindex").json()["job_id"]        # default: no force
+        assert portal.call(q.claim).payload == {}

@@ -51,6 +51,11 @@ async def handle_ingest(job: Job, *, repo, provider, queue, settings) -> None:
         changed = await repo.ensure_embedding_dim(len(probe))
         if changed:
             log.info("embedding dimension set to %d (re-embedding the whole vault)", len(probe))
+        # force=true (e.g. after a summary/embedding model change) blanks content
+        # hashes so every note is re-summarised + re-embedded, not skipped.
+        elif job.payload.get("force"):
+            n = await repo.reset_content_hashes(settings.user_id)
+            log.info("forced re-index: re-processing all %d notes", n)
         await ingest_vault(settings.vault_path, repo=repo, provider=provider, settings=settings, user_id=settings.user_id)
         await queue.enqueue("cluster", {})   # chain a re-cluster after a full-vault ingest
 

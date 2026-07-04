@@ -215,6 +215,15 @@ class Repository:
                                VALUES (%s,%s,%s)""",
                             (note_id, theme_id, ci.weights.get(note_id, 1.0)))
 
+    async def reset_content_hashes(self, user_id) -> int:
+        """Blank every note's content_hash so the next ingest re-processes them
+        all (re-summarise + re-embed), bypassing the unchanged-content skip.
+        Used by a forced re-index after the summary/embedding model changes."""
+        async with self.pool.connection() as conn:
+            cur = await conn.execute(
+                "UPDATE notes SET content_hash = '' WHERE user_id = %s", (user_id,))
+            return cur.rowcount
+
     async def embedding_dim(self) -> int | None:
         """Declared dimension of notes.embedding (pgvector stores it in
         atttypmod), or None if the column is a dimensionless vector."""

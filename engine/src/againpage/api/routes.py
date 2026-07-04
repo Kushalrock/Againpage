@@ -119,14 +119,16 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
     from againpage.scheduler.scheduler import Scheduler
 
     @r.post("/reindex")
-    async def reindex():
+    async def reindex(force: bool = False):
         if queue is None:
             raise HTTPException(503, "queue unavailable")
         uid = await repo.ensure_local_user()
         s = await repo.get_settings(uid)
         if not s or not s.vault_path:
             raise HTTPException(409, "no notes folder set")
-        job_id = await queue.enqueue("ingest", {})
+        # force=true re-processes every note even if unchanged (used after a
+        # summary/embedding model change).
+        job_id = await queue.enqueue("ingest", {"force": True} if force else {})
         return {"job_id": str(job_id)}
 
     @r.get("/status")
