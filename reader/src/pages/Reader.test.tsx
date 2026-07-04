@@ -4,7 +4,7 @@ import { ClientContext } from '../api/queries'
 import type { ApiClient } from '../api/client'
 import { AMOR_FATI } from '../api/fixtures'
 import type { AppStatus } from '../types/status'
-import { Today } from './Today'
+import { Reader } from './Reader'
 
 function mk(status: AppStatus, hasIssue: boolean): ApiClient {
   return {
@@ -16,10 +16,10 @@ function mk(status: AppStatus, hasIssue: boolean): ApiClient {
 }
 const S = (o: Partial<AppStatus>): AppStatus => ({ indexed: true, theme_count: 1, note_count: 5,
   issue_count: 0, latest_issue_date: null, next_edition_at: null, delivery_time: '07:00', cadence: 'daily', ...o })
-function wrap(client: ApiClient, onNavigate: (s: string) => void = () => {}) {
+function wrap(client: ApiClient, onNavigate: (s: string) => void = () => {}, issueId: string | null = null) {
   const qc = new QueryClient()
   return render(<QueryClientProvider client={qc}>
-    <ClientContext.Provider value={client}><Today onNavigate={onNavigate} /></ClientContext.Provider>
+    <ClientContext.Provider value={client}><Reader issueId={issueId} onNavigate={onNavigate} /></ClientContext.Provider>
   </QueryClientProvider>)
 }
 test('not indexed → compose-themes nudge + CTA navigates to settings', async () => {
@@ -33,8 +33,13 @@ test('indexed, no edition → first-edition countdown', async () => {
   wrap(mk(S({ next_edition_at: '2999-01-01T07:00:00' }), false))
   expect(await screen.findByText(/your first edition arrives/i)).toBeInTheDocument()
 })
-test('edition exists → renders issue + next-edition header badge', async () => {
+test("edition exists → renders issue + next-edition header badge under 'Reader'", async () => {
   wrap(mk(S({ issue_count: 1, next_edition_at: '2999-01-01T07:00:00' }), true))
   expect(await screen.findByRole('heading', { name: /Amor Fati/, level: 2 })).toBeInTheDocument()
   expect(screen.getByText(/next edition/i)).toBeInTheDocument()
+  expect(screen.getByText(/^Reader ·/i)).toBeInTheDocument()
+})
+test('with an issueId → renders that archived edition directly (even when not indexed)', async () => {
+  wrap(mk(S({ indexed: false }), false), () => {}, 'archived-id')
+  expect(await screen.findByRole('heading', { name: /Amor Fati/, level: 2 })).toBeInTheDocument()
 })

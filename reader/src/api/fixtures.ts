@@ -337,6 +337,6 @@ export const fixtureClient: ApiClient = {
     return { ...SETTINGS, vault_note_count: vaultNoteCount }
   },
   getStatus: async () => STATUS,
-  reindex: async () => ({ job_id: 'fixture-ingest' }),
+  reindex: async (_force?: boolean) => ({ job_id: 'fixture-ingest' }),
   triggerIssue: async () => ({ job_id: 'fixture-generate' }),
 }

@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import { color, font } from '../../theme/tokens'
 
-export type Screen = 'today' | 'archive' | 'settings'
+export type Screen = 'reader' | 'archive' | 'settings'
 
 const NAV_ITEMS: { key: Screen; label: string }[] = [
-  { key: 'today', label: "Today's edition" },
+  { key: 'reader', label: 'Reader' },
   { key: 'archive', label: 'The Archive' },
   { key: 'settings', label: 'Settings' },
 ]

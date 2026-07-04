@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useSettings, useSaveSettings } from '../api/queries'
+import { useSettings, useSaveSettings, useReindex } from '../api/queries'
 import { NotesFolderPanel } from '../components/settings/NotesFolderPanel'
 import { AiSourcePanel } from '../components/settings/AiSourcePanel'
 import { ExcludedPathsPanel } from '../components/settings/ExcludedPathsPanel'
@@ -13,6 +13,7 @@ const DEBOUNCE_MS = 400
 export function Settings() {
   const { data, isLoading } = useSettings()
   const save = useSaveSettings()
+  const reindex = useReindex()
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => () => {
@@ -48,7 +49,11 @@ export function Settings() {
         onChange={(patch) => scheduleSave(patch)}
       />
 
-      <AiSourcePanel settings={data} onChange={(patch) => scheduleSave(patch)} />
+      <AiSourcePanel
+        settings={data}
+        onSave={(patch) => save.mutateAsync(patch)}
+        onReindex={() => reindex.mutateAsync(true)}
+      />
 
       <ExcludedPathsPanel
         paths={data.excluded_paths}

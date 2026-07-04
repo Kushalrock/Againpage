@@ -28,7 +28,7 @@ export function httpClient(baseUrl = apiBase()): ApiClient {
     getSettings: () => get('/settings'),
     saveSettings: (patch) => put('/settings', patch),
     getStatus: () => get('/status'),
-    reindex: () => post('/reindex'),
+    reindex: (force?: boolean) => post(force ? '/reindex?force=true' : '/reindex'),
     triggerIssue: () => post('/trigger'),
   }
 }

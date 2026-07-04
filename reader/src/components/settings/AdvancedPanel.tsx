@@ -16,7 +16,7 @@ export function AdvancedPanel({ noteCount }: { noteCount: number }) {
       <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
           <button type="button" disabled={reindex.isPending} style={btnStyle(reindex.isPending)}
-            onClick={() => reindex.mutate()}>Re-index notes &amp; embeddings</button>
+            onClick={() => reindex.mutate(false)}>Re-index notes &amp; embeddings</button>
           {reindex.isSuccess && <span style={{ marginLeft: 12, fontSize: 14, color: color.ok }}>Queued ✓</span>}
           {reindex.isError && <span style={{ marginLeft: 12, fontSize: 14, color: color.accent }}>Couldn't queue — is a notes folder set?</span>}
           <p style={{ fontSize: 14, lineHeight: 1.55, color: color.muted, marginTop: 8 }}>

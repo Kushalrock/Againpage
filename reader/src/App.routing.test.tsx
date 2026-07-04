@@ -1,12 +1,12 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ClientContext } from './api/queries'
-import { fixtureClient } from './api/fixtures'
+import { fixtureClient, ARCHIVE, AMOR_FATI } from './api/fixtures'
 import type { ApiClient } from './api/client'
 import type { AppStatus } from './types/status'
 import type { SettingsResponse } from './types/settings'
 import App from './App'
-test('navigates from Today to Archive via the sidebar', async () => {
+test('navigates from Reader to Archive via the sidebar', async () => {
   const qc = new QueryClient()
   render(<QueryClientProvider client={qc}>
     <ClientContext.Provider value={fixtureClient}><App /></ClientContext.Provider>
@@ -16,7 +16,22 @@ test('navigates from Today to Archive via the sidebar', async () => {
   expect(await screen.findByText(/The bound volumes/i)).toBeInTheDocument()
 })
 
-test('Today compose-themes CTA navigates to Settings when not indexed', async () => {
+test('opening an archived edition shows it in the Reader', async () => {
+  const client: ApiClient = {
+    ...fixtureClient,
+    getArchive: async () => ARCHIVE,
+    getIssue: async () => ({ ...AMOR_FATI, content: { ...AMOR_FATI.content, title: 'Archived Piece' } }),
+  }
+  const qc = new QueryClient()
+  render(<QueryClientProvider client={qc}>
+    <ClientContext.Provider value={client}><App /></ClientContext.Provider>
+  </QueryClientProvider>)
+  fireEvent.click(await screen.findByText(/The Archive/i))     // Reader -> Archive
+  fireEvent.click(await screen.findByText(/Amor Fati/i))       // open an archived entry
+  expect(await screen.findByRole('heading', { name: /Archived Piece/, level: 2 })).toBeInTheDocument()
+})
+
+test('Reader compose-themes CTA navigates to Settings when not indexed', async () => {
   // Inject a client that reports indexed:false so Today shows the "Compose your themes" nudge.
   // (fixtureClient's STATUS.indexed is true by default, so it can't be used for this case.)
   const notIndexedStatus: AppStatus = {

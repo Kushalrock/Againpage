@@ -28,14 +28,6 @@ export function PreferencesPanel({
   settings: Settings
   onChange: (patch: SettingsPatch) => void
 }) {
-  function changeEmbedModel(next: string) {
-    if (next === settings.embed_model) return
-    const proceed = window.confirm(
-      'Changing the embedding model re-embeds and re-clusters all notes. Continue?',
-    )
-    if (proceed) onChange({ embed_model: next })
-  }
-
   return (
     <div style={{ padding: '28px 0', borderBottom: `1px solid ${color.border}` }}>
       <div
@@ -104,21 +96,6 @@ export function PreferencesPanel({
             onChange={(e) => onChange({ delivery_time: e.target.value })}
             style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
               padding: '10px 14px', fontSize: 15, color: color.inkStrong, fontFamily: "'Source Code Pro', monospace" }} />
-        </div>
-
-        <div>
-          <div style={{ fontSize: 13, color: color.muted, marginBottom: 6 }}>Embedding model</div>
-          <input
-            defaultValue={settings.embed_model}
-            onBlur={(e) => changeEmbedModel(e.target.value)}
-            style={{
-              width: '100%', background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
-              padding: '11px 14px', fontFamily: font.mono, fontSize: 13.5, color: color.ink,
-            }}
-          />
-          <div style={{ fontSize: 13, color: color.faint, marginTop: 6, fontStyle: 'italic' }}>
-            Changing this re-embeds and re-clusters your entire vault.
-          </div>
         </div>
       </div>
     </div>

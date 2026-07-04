@@ -12,6 +12,11 @@ export function useTodayIssue(opts?: { refetchInterval?: number | false }) {
   return useQuery({ queryKey: ['issue', 'today'], queryFn: () => client.getTodayIssue(),
     refetchInterval: opts?.refetchInterval ?? false, retry: false })
 }
+export function useIssue(id: string | undefined, opts?: { enabled?: boolean }) {
+  const client = useClient()
+  return useQuery({ queryKey: ['issue', id], queryFn: () => client.getIssue(id!),
+    enabled: (opts?.enabled ?? true) && !!id, retry: false })
+}
 export function useArchive() {
   const client = useClient()
   return useQuery({ queryKey: ['archive'], queryFn: () => client.getArchive() })
@@ -35,7 +40,7 @@ export function useStatus(opts?: { refetchInterval?: number | false }) {
 }
 export function useReindex() {
   const client = useClient()
-  return useMutation({ mutationFn: () => client.reindex() })
+  return useMutation({ mutationFn: (force?: boolean) => client.reindex(force) })
 }
 export function useTriggerIssue() {
   const client = useClient()

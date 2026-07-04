@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { vi } from 'vitest'
 import { PlatformContext, type Platform } from '../../platform'
 import { AiSourcePanel } from './AiSourcePanel'
 import { PROVIDER_DEFAULTS } from '../../lib/providerDefaults'
@@ -15,46 +16,70 @@ function fakePlatform(over: Partial<Platform> = {}): Platform {
     ...over } as Platform
 }
 
+function renderPanel(platform: Platform = fakePlatform()) {
+  const saved: SettingsPatch[] = []
+  let reindexed = 0
+  render(<PlatformContext.Provider value={platform}>
+    <AiSourcePanel settings={base} onSave={(p) => { saved.push(p) }} onReindex={() => { reindexed += 1 }} />
+  </PlatformContext.Provider>)
+  return { saved, reindexed: () => reindexed }
+}
+
 test('switching to ollama reveals the endpoint field', () => {
-  render(<PlatformContext.Provider value={fakePlatform()}>
-    <AiSourcePanel settings={base} onChange={() => {}} /></PlatformContext.Provider>)
+  renderPanel()
   fireEvent.click(screen.getByText('Ollama'))
   expect(screen.getByPlaceholderText(/11434/)).toBeInTheDocument()
 })
 
 test('test-connection goes idle -> ok', async () => {
-  render(<PlatformContext.Provider value={fakePlatform()}>
-    <AiSourcePanel settings={base} onChange={() => {}} /></PlatformContext.Provider>)
+  renderPanel()
   fireEvent.click(screen.getByText(/Test connection/i))
   await waitFor(() => expect(screen.getByText(/Connected/i)).toBeInTheDocument())
 })
 
-test('selecting a provider populates that provider default model names', () => {
-  const patches: SettingsPatch[] = []
-  render(<PlatformContext.Provider value={fakePlatform()}>
-    <AiSourcePanel settings={base} onChange={(p) => patches.push(p)} /></PlatformContext.Provider>)
+test('selecting a provider fills that provider default model names', () => {
+  renderPanel()
   fireEvent.click(screen.getByText('Custom'))
-  const last = patches.at(-1)!
-  expect(last.provider).toBe('custom')
-  expect(last.embed_model).toBe(PROVIDER_DEFAULTS.custom.embed_model)
-  expect(last.summary_model).toBe(PROVIDER_DEFAULTS.custom.summary_model)
-  expect(last.writer_model).toBe(PROVIDER_DEFAULTS.custom.writer_model)
+  expect(screen.getByDisplayValue(PROVIDER_DEFAULTS.custom.embed_model)).toBeInTheDocument()
+  expect(screen.getByDisplayValue(PROVIDER_DEFAULTS.custom.writer_model)).toBeInTheDocument()
 })
 
-test('model fields are editable (local state, typing is not swallowed)', () => {
-  const patches: SettingsPatch[] = []
-  render(<PlatformContext.Provider value={fakePlatform()}>
-    <AiSourcePanel settings={base} onChange={(p) => patches.push(p)} /></PlatformContext.Provider>)
-  const input = screen.getByDisplayValue('w') as HTMLInputElement       // writer model, from settings
-  fireEvent.change(input, { target: { value: 'anthropic/claude-3.5-sonnet' } })
-  expect(input.value).toBe('anthropic/claude-3.5-sonnet')                // reflects typed value immediately
-  expect(patches.at(-1)!.writer_model).toBe('anthropic/claude-3.5-sonnet')
+test('does NOT auto-save; Save persists the patch', async () => {
+  const { saved, reindexed } = renderPanel()
+  fireEvent.change(screen.getByDisplayValue('w'), { target: { value: 'anthropic/claude-sonnet-5' } })
+  expect(saved.length).toBe(0)                               // editing alone saves nothing
+  fireEvent.click(screen.getByText('Save'))
+  await waitFor(() => expect(saved.length).toBe(1))
+  expect(saved[0].writer_model).toBe('anthropic/claude-sonnet-5')
+  expect(reindexed()).toBe(0)                                // writer-only change → no re-index
+})
+
+test('changing the embedding model confirms and triggers a re-index on Save', async () => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  const { saved, reindexed } = renderPanel()
+  fireEvent.change(screen.getByDisplayValue('e'), { target: { value: 'ollama/other-embed' } })
+  fireEvent.click(screen.getByText('Save'))
+  await waitFor(() => expect(saved.length).toBe(1))
+  expect(confirm).toHaveBeenCalled()
+  expect(saved[0].embed_model).toBe('ollama/other-embed')
+  expect(reindexed()).toBe(1)
+  confirm.mockRestore()
+})
+
+test('cancelling the confirmation saves nothing', async () => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  const { saved, reindexed } = renderPanel()
+  fireEvent.change(screen.getByDisplayValue('e'), { target: { value: 'ollama/other-embed' } })
+  fireEvent.click(screen.getByText('Save'))
+  await new Promise((r) => setTimeout(r, 0))
+  expect(saved.length).toBe(0)
+  expect(reindexed()).toBe(0)
+  confirm.mockRestore()
 })
 
 test('a stored api key is loaded back into the field on mount', async () => {
   const platform = fakePlatform({ keyStore: { get: async (k) => (k === 'openrouter' ? 'sk-or-saved' : null),
     set: async () => {}, remove: async () => {} } })
-  render(<PlatformContext.Provider value={platform}>
-    <AiSourcePanel settings={base} onChange={() => {}} /></PlatformContext.Provider>)
+  renderPanel(platform)
   expect(await screen.findByDisplayValue('sk-or-saved')).toBeInTheDocument()
 })
