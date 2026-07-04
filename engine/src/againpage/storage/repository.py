@@ -12,6 +12,9 @@ _SETTINGS_COLS = ("user_id","vault_path","excluded_paths","profile_text","cadenc
     "delivery_time","reading_min","notes_per_issue","provider","ollama_endpoint",
     "embed_model","summary_model","writer_model")
 
+# Advisory-lock key serialising the embedding-dimension DDL across processes.
+_EMBED_DIM_LOCK = 0x41474E50  # "AGNP"
+
 def _settings_row(d: dict) -> SettingsRow:
     return SettingsRow(**{k: d[k] for k in _SETTINGS_COLS})
 
@@ -211,6 +214,57 @@ class Repository:
                             """INSERT INTO note_themes(note_id,theme_id,weight)
                                VALUES (%s,%s,%s)""",
                             (note_id, theme_id, ci.weights.get(note_id, 1.0)))
+
+    async def embedding_dim(self) -> int | None:
+        """Declared dimension of notes.embedding (pgvector stores it in
+        atttypmod), or None if the column is a dimensionless vector."""
+        async with self.pool.connection() as conn:
+            cur = await conn.execute(
+                "SELECT atttypmod FROM pg_attribute "
+                "WHERE attrelid='notes'::regclass AND attname='embedding'")
+            row = await cur.fetchone()
+        mod = row[0] if row else None
+        return mod if mod and mod > 0 else None
+
+    async def ensure_embedding_dim(self, dim: int) -> bool:
+        """Make notes.embedding / themes.centroid VECTOR(``dim``). If the
+        dimension already matches, do nothing. Otherwise recreate the columns
+        and the HNSW index at ``dim`` and invalidate derived data (all
+        embeddings, themes, and issue theme links) so the next re-index
+        rebuilds them — vectors of different dimensions are not comparable, so
+        the whole library must be re-embedded with one model at a time.
+
+        Returns True if the dimension was changed. Serialised with a
+        transaction-scoped advisory lock so concurrent API/worker starts don't
+        race on the DDL. ``dim`` is coerced to int and interpolated into the
+        DDL (pgvector's type modifier cannot be a bind parameter)."""
+        dim = int(dim)
+        if dim <= 0:
+            return False
+        async with self.pool.connection() as conn:
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock(%s)", (_EMBED_DIM_LOCK,))
+                cur = await conn.execute(
+                    "SELECT atttypmod FROM pg_attribute "
+                    "WHERE attrelid='notes'::regclass AND attname='embedding'")
+                row = await cur.fetchone()
+                current = row[0] if row and row[0] and row[0] > 0 else None
+                if current == dim:
+                    return False
+                await conn.execute("DROP INDEX IF EXISTS idx_notes_embedding")
+                await conn.execute(f"ALTER TABLE notes ALTER COLUMN embedding TYPE vector({dim}) USING NULL")
+                # Derived data is now the wrong dimension — clear it. Null the
+                # issue->theme links first (that FK has no ON DELETE action).
+                await conn.execute("UPDATE issues SET theme_id = NULL WHERE theme_id IS NOT NULL")
+                await conn.execute("DELETE FROM note_themes")
+                await conn.execute("DELETE FROM themes")
+                await conn.execute(f"ALTER TABLE themes ALTER COLUMN centroid TYPE vector({dim}) USING NULL")
+                await conn.execute(
+                    "CREATE INDEX idx_notes_embedding ON notes USING hnsw (embedding vector_cosine_ops)")
+                # Force every note to re-embed on the next ingest (the content
+                # hash gate would otherwise skip unchanged files).
+                await conn.execute("UPDATE notes SET content_hash = ''")
+                return True
 
     async def themes(self, user_id) -> list[ThemeRow]:
         async with self.pool.connection() as conn:
