@@ -18,6 +18,9 @@ def main() -> None:
     from againpage.config import load_env
     load_env()   # pull DATABASE_URL / provider keys from a .env file if present
     port = int(os.environ.get("AGAINPAGE_API_PORT", "8000"))
+    # Default to loopback (dev/desktop). In Docker set AGAINPAGE_API_HOST=0.0.0.0
+    # so the published port is reachable from the host.
+    host = os.environ.get("AGAINPAGE_API_HOST", "127.0.0.1")
     dsn = os.environ.get("DATABASE_URL", db.DEFAULT_DSN)
 
     async def _amain() -> None:
@@ -27,7 +30,7 @@ def main() -> None:
         repo = Repository(pool)
         await repo.ensure_local_user()
         app = create_app(repo)
-        config = uvicorn.Config(app, host="127.0.0.1", port=port, loop="asyncio")
+        config = uvicorn.Config(app, host=host, port=port, loop="asyncio")
         await uvicorn.Server(config).serve()
 
     asyncio.run(_amain())

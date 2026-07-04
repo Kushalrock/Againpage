@@ -1,0 +1,72 @@
+# Full local AgainPage stack in one command:
+#
+#   OPENROUTER_API_KEY=sk-or-...  VAULT_PATH=/abs/path/to/notes  docker compose up --build
+#
+# then open http://localhost:5173  (API on :8000, Postgres on :5432).
+#
+# Notes:
+# - Put OPENROUTER_API_KEY in the shell env or in an `.env` beside this file.
+# - VAULT_PATH mounts your notes read-only at /vault; set the notes folder to
+#   /vault in Settings. Defaults to ./notes if unset.
+# - For a host-run Ollama, set the Ollama endpoint in Settings to
+#   http://host.docker.internal:11434 (embeddings run locally, off the network).
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: againpage
+    ports: ["5432:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d againpage"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: { context: ./engine }
+    command: ["againpage-api"]
+    environment:
+      DATABASE_URL: postgresql://postgres:dev@db:5432/againpage
+      AGAINPAGE_API_HOST: 0.0.0.0
+      AGAINPAGE_API_PORT: "8000"
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+    ports: ["8000:8000"]
+    depends_on:
+      db: { condition: service_healthy }
+    healthcheck:
+      # api owns schema migrations on boot; gating the worker on api-healthy
+      # avoids two processes racing to migrate on first start.
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/status').status==200 else 1)"]
+      interval: 4s
+      timeout: 4s
+      retries: 30
+      start_period: 20s
+
+  worker:
+    build: { context: ./engine }
+    command: ["againpage-worker"]
+    environment:
+      DATABASE_URL: postgresql://postgres:dev@db:5432/againpage
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${VAULT_PATH:-./notes}:/vault:ro
+    depends_on:
+      db: { condition: service_healthy }
+      api: { condition: service_healthy }
+
+  reader:
+    build:
+      context: .
+      dockerfile: reader/Dockerfile
+    ports: ["5173:80"]
+    depends_on:
+      - api
+
+volumes:
+  pgdata: {}
