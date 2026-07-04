@@ -92,10 +92,19 @@ def main() -> None:  # pragma: no cover
     import os
     from againpage.storage import db, migrate
     from againpage.providers.factory import make_provider
+    from againpage.config import load_env
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+    loaded = load_env()   # pull DATABASE_URL / provider keys from a .env file if present
     dsn = os.environ.get("DATABASE_URL", db.DEFAULT_DSN)
 
     async def _amain() -> None:
+        if loaded:
+            log.info(".env loaded from %s", ", ".join(str(p) for p in loaded))
+        # Surface whether provider keys are present (masked) — the #1 cause of
+        # ingest/generate failures is a missing OPENROUTER_API_KEY.
+        log.info("provider keys: openrouter=%s ollama=%s",
+                 "set" if os.environ.get("OPENROUTER_API_KEY") else "MISSING",
+                 "set" if os.environ.get("OLLAMA_API_KEY") else "unset (fine for local Ollama)")
         log.info("starting worker (DATABASE_URL=%s)", dsn)
         pool = db.make_pool(dsn, open=False)
         await pool.open()

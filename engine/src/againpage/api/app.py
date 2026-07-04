@@ -16,6 +16,8 @@ def main() -> None:
     from againpage.storage import db, migrate
     from againpage.storage.repository import Repository
     from againpage.storage.seed import seed_sample_issue
+    from againpage.config import load_env
+    load_env()   # pull DATABASE_URL / provider keys from a .env file if present
     port = int(os.environ.get("AGAINPAGE_API_PORT", "8000"))
     dsn = os.environ.get("DATABASE_URL", db.DEFAULT_DSN)
 
