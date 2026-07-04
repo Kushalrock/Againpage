@@ -1,5 +1,6 @@
 from __future__ import annotations
 import asyncio
+import logging
 from datetime import date, datetime, timedelta
 from againpage.core.models import SettingsRow, NewIssue
 from againpage.queue.queue import Queue, Job
@@ -11,6 +12,8 @@ from againpage.generation.generate import run_generate
 from againpage.pipeline.ingest import ingest_file, ingest_vault
 from againpage.pipeline.cluster import run_cluster
 from againpage.scheduler.scheduler import Scheduler
+
+log = logging.getLogger("againpage.worker")
 
 # A hand-fed M1 payload so `trigger` works before ingest/selection exist.
 def fixture_payload(settings: SettingsRow) -> dict:
@@ -48,10 +51,12 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     repo = Repository(pool)
     scheduler = Scheduler(repo, queue)
     last_tick = 0.0
+    log.info("worker ready — polling the job queue (Ctrl+C to stop)")
     while True:
         job = await queue.claim()
         if job is None:
             await asyncio.sleep(1.0); continue
+        log.info("job %s: %s — starting", job.id, job.type)
         try:
             settings = await repo.get_settings(await repo.ensure_local_user())
             provider = make_provider(settings)
@@ -67,25 +72,35 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
             elif job.type == "cluster":
                 await run_cluster(settings.user_id, repo=repo, provider=provider, settings=settings)
             await queue.complete(job.id)
+            log.info("job %s: %s — done", job.id, job.type)
         except Exception:  # noqa: BLE001
+            # Log the real error — otherwise a failing job retries invisibly forever.
+            log.exception("job %s: %s — FAILED (attempt %d), will retry", job.id, job.type, job.attempts)
             await queue.fail(job.id, retry_in=timedelta(seconds=min(60, 2 ** job.attempts)))
         import time as _t
         if _t.monotonic() - last_tick > 60:
             last_tick = _t.monotonic()
             # Local (naive) now: delivery_time is the user's local wall-clock, and the
             # cadence day-gap is measured in the user's local days — not UTC.
-            await scheduler.tick(now=datetime.now())
+            # Guard the tick: a scheduler error must not kill the whole worker loop.
+            try:
+                await scheduler.tick(now=datetime.now())
+            except Exception:  # noqa: BLE001
+                log.exception("scheduler tick failed")
 
 def main() -> None:  # pragma: no cover
     import os
     from againpage.storage import db, migrate
     from againpage.providers.factory import make_provider
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     dsn = os.environ.get("DATABASE_URL", db.DEFAULT_DSN)
 
     async def _amain() -> None:
+        log.info("starting worker (DATABASE_URL=%s)", dsn)
         pool = db.make_pool(dsn, open=False)
         await pool.open()
         await migrate.apply(pool)
+        log.info("connected to database, migrations applied")
         await run_worker(pool, make_provider)
 
     asyncio.run(_amain())
