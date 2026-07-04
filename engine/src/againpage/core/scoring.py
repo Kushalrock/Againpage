@@ -31,7 +31,9 @@ def _to_dt(x: date | datetime) -> datetime:
     raises ``datetime - date``. Coerce both sides so day-granularity scoring
     is robust to the mix (and to naive/aware mismatches)."""
     if isinstance(x, datetime):          # datetime is a subclass of date — check first
-        return x.replace(tzinfo=None)
+        # Convert aware -> local wall-clock before dropping tz (don't just strip
+        # the offset, which would be wrong by up to the UTC offset).
+        return x.astimezone().replace(tzinfo=None) if x.tzinfo is not None else x
     return datetime(x.year, x.month, x.day)
 
 

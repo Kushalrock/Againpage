@@ -71,22 +71,25 @@ class Queue:
             return cur.rowcount
 
     async def is_cancelled(self, job_id: UUID) -> bool:
-        """True if a running job has been cancelled (or vanished) — the signal a
-        long job polls to abort cooperatively."""
+        """True only if the job was explicitly cancelled — the signal a long job
+        polls to abort cooperatively. A missing row is NOT treated as cancelled
+        (so a synthetic/untracked job or a transient read never aborts real work)."""
         async with self.pool.connection() as conn:
             cur = await conn.execute("SELECT status FROM jobs WHERE id = %s", (job_id,))
             row = await cur.fetchone()
-        return row is None or row[0] != 'running'
+        return row is not None and row[0] == 'cancelled'
 
     async def complete(self, job_id: UUID) -> None:
+        # Guard on status='running' so a job cancelled mid-flight stays
+        # 'cancelled' (a truthful terminal state) instead of being flipped to 'done'.
         async with self.pool.connection() as conn:
-            await conn.execute("UPDATE jobs SET status='done' WHERE id=%s", (job_id,))
+            await conn.execute("UPDATE jobs SET status='done' WHERE id=%s AND status='running'", (job_id,))
 
     async def fail(self, job_id: UUID, *, retry_in: timedelta | None) -> None:
         async with self.pool.connection() as conn:
             if retry_in is None:
-                await conn.execute("UPDATE jobs SET status='failed' WHERE id=%s", (job_id,))
+                await conn.execute("UPDATE jobs SET status='failed' WHERE id=%s AND status='running'", (job_id,))
             else:
                 await conn.execute(
-                    "UPDATE jobs SET status='queued', run_after=now() + %s WHERE id=%s",
+                    "UPDATE jobs SET status='queued', run_after=now() + %s WHERE id=%s AND status='running'",
                     (retry_in, job_id))

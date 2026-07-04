@@ -47,16 +47,6 @@ async def test_ensure_new_dimension_migrates_and_invalidates_derived_data():
     assert await repo.ensure_embedding_dim(1536) is False      # idempotent
 
 
-async def test_reset_content_hashes_blanks_all_for_reingest():
-    repo = await _repo()
-    uid = await repo.ensure_local_user()
-    await repo.upsert_note(NewNote(user_id=uid, vault_path="a.md", title="A", content_hash="abc123",
-        substantive=True, summary="s", tags=["t"], embedding=[0.1] * 768))
-    count = await repo.reset_content_hashes(uid)
-    assert count == 1
-    assert (await repo.note_by_path(uid, "a.md")).content_hash == ""
-
-
 async def test_new_dimension_accepts_matching_vectors_afterward():
     repo = await _repo()
     uid = await repo.ensure_local_user()

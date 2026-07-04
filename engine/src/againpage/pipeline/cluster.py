@@ -56,7 +56,7 @@ def reduce_and_cluster(embeddings: list[list[float]], ids: list[UUID], *,
 from againpage.core.models import ClusterInput
 from againpage.pipeline.label import label_cluster
 
-async def run_cluster(user_id, *, repo, provider, settings) -> int:
+async def run_cluster(user_id, *, repo, provider, settings, cancelled=None) -> int:
     notes = await repo.active_notes(user_id)
     notes = [n for n in notes if n.embedding is not None]
     if not notes:
@@ -80,5 +80,7 @@ async def run_cluster(user_id, *, repo, provider, settings) -> int:
         inputs.append(ClusterInput(label=label, centroid=c.centroid,
             membership_hash=c.membership_hash, member_ids=c.member_ids,
             weights={i: 1.0 for i in c.member_ids}, last_visited_at=None))
+    if cancelled is not None and await cancelled():   # abort before touching themes → old themes stay
+        return 0
     await repo.replace_clustering(user_id, inputs)
     return len(inputs)

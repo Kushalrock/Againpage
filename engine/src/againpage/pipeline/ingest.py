@@ -43,11 +43,14 @@ async def ingest_file(path: str, *, repo: Repository, provider: Provider,
     return "ingested"
 
 async def ingest_vault(vault_path: str, *, repo: Repository, provider: Provider,
-                       settings: SettingsRow, user_id: UUID) -> dict:
+                       settings: SettingsRow, user_id: UUID, cancelled=None) -> dict:
     paths = scan.scan_vault(vault_path, excluded=settings.excluded_paths)
     known = _known_map(paths)
-    counts = {"ingested": 0, "skipped": 0, "pruned": 0}
+    counts = {"ingested": 0, "skipped": 0, "pruned": 0, "cancelled": False}
     for p in paths:
+        if cancelled is not None and await cancelled():
+            counts["cancelled"] = True
+            return counts
         counts[await ingest_file(p, repo=repo, provider=provider, settings=settings,
                                  user_id=user_id, known=known)] += 1
     counts["deactivated"] = await repo.deactivate_missing(user_id, set(paths))

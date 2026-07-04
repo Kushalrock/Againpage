@@ -27,11 +27,13 @@ def fixture_payload(settings: SettingsRow) -> dict:
                             "why": "a compression of the dichotomy of control"}],
         profile=settings.profile_text or "")
 
-async def handle_generate(job: Job, *, repo: Repository, provider: Provider, settings: SettingsRow) -> None:
+async def handle_generate(job: Job, *, repo: Repository, provider: Provider, settings: SettingsRow, cancelled=None) -> None:
     payload = job.payload or {}
     if not payload.get("theme"):
         payload = fixture_payload(settings)
     issue = await compose_issue(payload, provider, writer_model=settings.writer_model or "anthropic/claude-sonnet-4.6")
+    if cancelled is not None and await cancelled():   # cancelled during compose → don't save
+        return
     no = await repo.next_issue_no(settings.user_id)
     await repo.insert_issue(NewIssue(
         user_id=settings.user_id, issue_no=no, issue_date=date.today(), theme_id=None,
@@ -53,12 +55,16 @@ async def handle_ingest(job: Job, *, repo, provider, queue, settings) -> None:
         # Cheap sync re-index: only changed notes are re-processed (content-hash
         # gate), themes replaced atomically by the chained cluster job. Probe the
         # embedding dimension in case it changed via manual settings.
+        async def cancelled() -> bool:
+            return await queue.is_cancelled(job.id)
         probe = await provider.embed("dimension probe", model=settings.embed_model or "", task="clustering")
         changed = await repo.ensure_embedding_dim(len(probe))
         if changed:
             log.info("embedding dimension set to %d (re-embedding the whole vault)", len(probe))
-        await ingest_vault(settings.vault_path, repo=repo, provider=provider, settings=settings, user_id=settings.user_id)
-        await queue.enqueue("cluster", {})   # chain a re-cluster after a full-vault ingest
+        counts = await ingest_vault(settings.vault_path, repo=repo, provider=provider,
+                                    settings=settings, user_id=settings.user_id, cancelled=cancelled)
+        if not counts.get("cancelled"):
+            await queue.enqueue("cluster", {})   # chain a re-cluster after a full-vault ingest
 
 async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     import time as _t
@@ -87,6 +93,10 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
         if job is None:
             await asyncio.sleep(1.0); continue
         log.info("job %s: %s — starting", job.id, job.type)
+
+        async def cancelled() -> bool:
+            return await queue.is_cancelled(job.id)
+
         try:
             settings = await repo.get_settings(await repo.ensure_local_user())
             provider = make_provider(settings)
@@ -94,13 +104,13 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
                 themes = await repo.themes(settings.user_id)
                 if themes:
                     await run_generate(settings.user_id, repo=repo, provider=provider,
-                                       settings=settings, now=date.today())
+                                       settings=settings, now=date.today(), cancelled=cancelled)
                 else:
-                    await handle_generate(job, repo=repo, provider=provider, settings=settings)
+                    await handle_generate(job, repo=repo, provider=provider, settings=settings, cancelled=cancelled)
             elif job.type == "ingest":
                 await handle_ingest(job, repo=repo, provider=provider, queue=queue, settings=settings)
             elif job.type == "cluster":
-                await run_cluster(settings.user_id, repo=repo, provider=provider, settings=settings)
+                await run_cluster(settings.user_id, repo=repo, provider=provider, settings=settings, cancelled=cancelled)
             await queue.complete(job.id)
             log.info("job %s: %s — done", job.id, job.type)
         except Exception:  # noqa: BLE001

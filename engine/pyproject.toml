@@ -43,6 +43,15 @@ packages = ["src/againpage"]
 asyncio_mode = "auto"
 pythonpath = ["src"]
 testpaths = ["tests"]
+filterwarnings = [
+    # Production opens pools via make_pool(open=False) + await pool.open(); only
+    # the test helpers use the constructor-open path psycopg now warns about.
+    "ignore:opening the async pool:RuntimeWarning",
+    # umap emits this whenever random_state is set (we pin it for determinism).
+    "ignore:n_jobs value 1 overridden:UserWarning",
+    # Starlette's TestClient deprecation (third-party; httpx2 not yet standard).
+    "ignore:Using .httpx. with .starlette.testclient. is deprecated",
+]
 
 [dependency-groups]
 dev = [

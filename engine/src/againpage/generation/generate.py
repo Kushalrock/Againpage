@@ -18,7 +18,14 @@ def _default_read(path: str) -> str:
 
 async def run_generate(user_id: UUID, *, repo: Repository, provider: Provider,
                        settings: SettingsRow, now: date, rng: _random.Random | None = None,
-                       read_note_text=None) -> UUID:
+                       read_note_text=None, cancelled=None) -> UUID | None:
+    """Compose and persist one edition. If ``cancelled`` (an async predicate) is
+    supplied and returns True, generation aborts WITHOUT saving — an issue is only
+    inserted once fully composed, so a cancel leaves no partial edition. Returns
+    the new issue id, or None if cancelled."""
+    async def _stop() -> bool:
+        return cancelled is not None and await cancelled()
+
     rng = rng or _random.Random()
     read_note_text = read_note_text or _default_read
     ctx = await repo.build_selection_context(user_id)
@@ -28,8 +35,12 @@ async def run_generate(user_id: UUID, *, repo: Repository, provider: Provider,
     payload = build_payload(selection, reading_min=settings.reading_min,
         profile=settings.profile_text or "", read_note_text=read_note_text,
         date=now.isoformat(), issue_no=issue_no)
+    if await _stop():
+        return None
     issue = await compose_issue(payload, provider,
         writer_model=settings.writer_model or "anthropic/claude-sonnet-4.6")
+    if await _stop():                     # cancelled during the (slow) compose → don't save
+        return None
     row = await repo.insert_issue(NewIssue(user_id=user_id, issue_no=issue_no, issue_date=now,
         theme_id=selection.theme_id, theme_label=selection.theme_label,
         reading_min=settings.reading_min, word_target=word_target(settings.reading_min),
