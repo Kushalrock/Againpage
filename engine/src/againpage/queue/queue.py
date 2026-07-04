@@ -49,13 +49,25 @@ class Queue:
             return sorted(r[0] for r in await cur.fetchall())
 
     async def cancel(self, type: str) -> int:
-        """Remove queued (not-yet-started) jobs of a type — including ones
-        waiting to retry. A running job can't be interrupted mid-flight, so it
-        is left to finish. Returns how many were removed."""
+        """Remove queued (not-yet-started) jobs of a type, and signal any
+        RUNNING job of that type to stop by marking it 'cancelled' — the worker
+        checks this between steps (cooperative cancellation) and aborts without
+        committing, so a cancelled re-index leaves the old data intact. Returns
+        how many jobs were removed or signalled."""
         async with self.pool.connection() as conn:
-            cur = await conn.execute(
-                "DELETE FROM jobs WHERE type = %s AND status = 'queued'", (type,))
-            return cur.rowcount
+            async with conn.transaction():
+                d = await conn.execute("DELETE FROM jobs WHERE type = %s AND status = 'queued'", (type,))
+                c = await conn.execute(
+                    "UPDATE jobs SET status = 'cancelled' WHERE type = %s AND status = 'running'", (type,))
+            return d.rowcount + c.rowcount
+
+    async def is_cancelled(self, job_id: UUID) -> bool:
+        """True if a running job has been cancelled (or vanished) — the signal a
+        long job polls to abort cooperatively."""
+        async with self.pool.connection() as conn:
+            cur = await conn.execute("SELECT status FROM jobs WHERE id = %s", (job_id,))
+            row = await cur.fetchone()
+        return row is None or row[0] != 'running'
 
     async def complete(self, job_id: UUID) -> None:
         async with self.pool.connection() as conn:

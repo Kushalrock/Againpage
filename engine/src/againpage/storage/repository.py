@@ -215,6 +215,71 @@ class Repository:
                                VALUES (%s,%s,%s)""",
                             (note_id, theme_id, ci.weights.get(note_id, 1.0)))
 
+    async def swap_reindex(self, user_id, *, dim: int, staged: list, labeled: list, seen_paths: set) -> None:
+        """Apply a fully-computed re-index in ONE transaction: (re)set the
+        embedding dimension, upsert every note's new summary/tags/embedding,
+        deactivate notes no longer in the vault, and replace the themes. Nothing
+        here does network I/O, so the transaction is short. Because it's atomic,
+        a cancel/crash *before* this call leaves the old summaries, embeddings,
+        and themes completely intact — readers on other connections see the old
+        snapshot until this commits.
+
+        ``staged``  : list[NewNote] (the freshly computed notes)
+        ``labeled`` : list[(label:str, centroid:list[float], member_paths:list[str])]
+        ``seen_paths``: every vault_path present this run (for deactivation)
+        """
+        from againpage.core.scoring import membership_hash
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            async with conn.transaction():
+                await conn.execute("SELECT pg_advisory_xact_lock(%s)", (_EMBED_DIM_LOCK,))
+                cur = await conn.execute(
+                    "SELECT atttypmod FROM pg_attribute WHERE attrelid='notes'::regclass AND attname='embedding'")
+                row = await cur.fetchone()
+                current = row["atttypmod"] if row and row["atttypmod"] and row["atttypmod"] > 0 else None
+                if current != dim:
+                    await conn.execute("DROP INDEX IF EXISTS idx_notes_embedding")
+                    await conn.execute(f"ALTER TABLE notes ALTER COLUMN embedding TYPE vector({dim}) USING NULL")
+                    await conn.execute(f"ALTER TABLE themes ALTER COLUMN centroid TYPE vector({dim}) USING NULL")
+                    await conn.execute(
+                        "CREATE INDEX idx_notes_embedding ON notes USING hnsw (embedding vector_cosine_ops)")
+                path_to_id: dict[str, UUID] = {}
+                for n in staged:
+                    c = await conn.execute(
+                        """INSERT INTO notes(user_id,vault_path,title,content_hash,substantive,
+                                summary,tags,embedding,active,updated_at)
+                           VALUES (%s,%s,%s,%s,%s,%s,%s,%s,TRUE,now())
+                           ON CONFLICT (user_id,vault_path) DO UPDATE SET
+                             title=EXCLUDED.title, content_hash=EXCLUDED.content_hash,
+                             substantive=EXCLUDED.substantive, summary=EXCLUDED.summary,
+                             tags=EXCLUDED.tags, embedding=EXCLUDED.embedding, active=TRUE, updated_at=now()
+                           RETURNING id, vault_path""",
+                        (n.user_id, n.vault_path, n.title, n.content_hash, n.substantive,
+                         n.summary, n.tags, n.embedding))
+                    r = await c.fetchone()
+                    path_to_id[r["vault_path"]] = r["id"]
+                await conn.execute(
+                    "UPDATE notes SET active=FALSE WHERE user_id=%s AND active AND NOT (vault_path = ANY(%s))",
+                    (user_id, list(seen_paths)))
+                # Replace themes (FK-safe: null issue references first).
+                await conn.execute("UPDATE issues SET theme_id=NULL WHERE user_id=%s AND theme_id IS NOT NULL", (user_id,))
+                await conn.execute(
+                    "DELETE FROM note_themes WHERE theme_id IN (SELECT id FROM themes WHERE user_id=%s)", (user_id,))
+                await conn.execute("DELETE FROM themes WHERE user_id=%s", (user_id,))
+                for label, centroid, member_paths in labeled:
+                    member_ids = [path_to_id[p] for p in member_paths if p in path_to_id]
+                    if not member_ids:
+                        continue
+                    cur2 = await conn.execute(
+                        """INSERT INTO themes(user_id,label,centroid,membership_hash,last_visited_at)
+                           VALUES (%s,%s,%s,%s,NULL) RETURNING id""",
+                        (user_id, label, centroid, membership_hash(member_ids)))
+                    theme_id = (await cur2.fetchone())["id"]
+                    for note_id in member_ids:
+                        await conn.execute(
+                            "INSERT INTO note_themes(note_id,theme_id,weight) VALUES (%s,%s,1.0)",
+                            (note_id, theme_id))
+
     async def reset_content_hashes(self, user_id) -> int:
         """Blank every note's content_hash so the next ingest re-processes them
         all (re-summarise + re-embed), bypassing the unchanged-content skip.

@@ -11,6 +11,7 @@ from againpage.generation.payload import manual_payload, word_target
 from againpage.generation.generate import run_generate
 from againpage.pipeline.ingest import ingest_file, ingest_vault
 from againpage.pipeline.cluster import run_cluster
+from againpage.pipeline.reindex import run_reindex
 from againpage.scheduler.scheduler import Scheduler
 
 log = logging.getLogger("againpage.worker")
@@ -42,20 +43,20 @@ async def handle_ingest(job: Job, *, repo, provider, queue, settings) -> None:
     path = job.payload.get("path")
     if path:
         await ingest_file(path, repo=repo, provider=provider, settings=settings, user_id=settings.user_id)
+    elif job.payload.get("force"):
+        # Forced re-index (after a model change): compute everything in memory
+        # and swap atomically, so a cancel/crash midway leaves the old data
+        # intact. Cancellable between notes.
+        result = await run_reindex(repo=repo, provider=provider, queue=queue, settings=settings, job_id=job.id)
+        log.info("forced re-index: %s", result)
     elif settings.vault_path:
-        # Auto-detect the embedding model's dimension (probe it once) and make
-        # the schema match before a full re-index — so switching embedding
-        # models just works, no manual dimension entry. A dimension change
-        # clears old embeddings/themes; the ingest below re-embeds everything.
+        # Cheap sync re-index: only changed notes are re-processed (content-hash
+        # gate), themes replaced atomically by the chained cluster job. Probe the
+        # embedding dimension in case it changed via manual settings.
         probe = await provider.embed("dimension probe", model=settings.embed_model or "", task="clustering")
         changed = await repo.ensure_embedding_dim(len(probe))
         if changed:
             log.info("embedding dimension set to %d (re-embedding the whole vault)", len(probe))
-        # force=true (e.g. after a summary/embedding model change) blanks content
-        # hashes so every note is re-summarised + re-embedded, not skipped.
-        elif job.payload.get("force"):
-            n = await repo.reset_content_hashes(settings.user_id)
-            log.info("forced re-index: re-processing all %d notes", n)
         await ingest_vault(settings.vault_path, repo=repo, provider=provider, settings=settings, user_id=settings.user_id)
         await queue.enqueue("cluster", {})   # chain a re-cluster after a full-vault ingest
 
