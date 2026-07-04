@@ -2,7 +2,7 @@ from __future__ import annotations
 import hashlib
 import math
 import random as _random
-from datetime import datetime
+from datetime import date, datetime
 from uuid import UUID
 
 def membership_hash(ids: list[UUID]) -> str:
@@ -23,8 +23,20 @@ def cosine(a: list[float], b: list[float]) -> float:
         return 0.0
     return dot / (na * nb)
 
-def _days(a: datetime, b: datetime) -> float:
-    return abs((b - a).total_seconds()) / 86400.0
+def _to_dt(x: date | datetime) -> datetime:
+    """Normalise a date/datetime (naive or tz-aware) to a naive datetime.
+
+    Surfaced history comes from DATE columns (e.g. issue_date, theme
+    last_visited) while ``now`` is a datetime — subtracting them directly
+    raises ``datetime - date``. Coerce both sides so day-granularity scoring
+    is robust to the mix (and to naive/aware mismatches)."""
+    if isinstance(x, datetime):          # datetime is a subclass of date — check first
+        return x.replace(tzinfo=None)
+    return datetime(x.year, x.month, x.day)
+
+
+def _days(a: date | datetime, b: date | datetime) -> float:
+    return abs((_to_dt(b) - _to_dt(a)).total_seconds()) / 86400.0
 
 def recency_decay(last, now: datetime, *, half_life_days: float = 30.0) -> float:
     """0..1, higher when LESS recently visited (staler theme)."""

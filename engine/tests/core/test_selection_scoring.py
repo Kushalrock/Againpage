@@ -1,10 +1,19 @@
 import random
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 from againpage.core.scoring import (cosine, recency_decay, staleness,
     link_penalty, unsurfaced_fraction, weighted_sample)
 
 NOW = datetime(2026, 6, 30, tzinfo=timezone.utc)
+
+
+def test_scoring_accepts_date_and_datetime_mix():
+    # Surfaced history is a DATE column; `now` is a (tz-aware) datetime.
+    # Must not raise `datetime - date`, and must score sensibly.
+    s = staleness(date(2026, 6, 1), NOW, interval_days=21)   # ~29 days overdue
+    assert s > 1.0
+    # naive datetime vs aware datetime also fine
+    assert recency_decay(datetime(2026, 6, 1), NOW) >= 0.0
 
 def test_cosine():
     assert abs(cosine([1, 0], [1, 0]) - 1.0) < 1e-9
