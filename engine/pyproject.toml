@@ -32,6 +32,13 @@ constraint-dependencies = [
 againpage-api = "againpage.api.app:main"
 againpage-worker = "againpage.worker.loop:main"
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/againpage"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 pythonpath = ["src"]

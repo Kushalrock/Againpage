@@ -12,7 +12,7 @@ constraints = [
 [[package]]
 name = "againpage"
 version = "0.1.0"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
     { name = "hdbscan" },
@@ -219,6 +219,7 @@ wheels = [
 name = "llvmlite"
 version = "0.48.0"
 source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/a0/acc8ffcd5bdc63df0097e22c719bfcd61b604358343089313a8aebbb24ab/llvmlite-0.48.0.tar.gz", hash = "sha256:543b19f9ef8f3c7c60d1468191e4ee1b1537bf9f8a3d56f64c0ddd98de92edd2", size = 184016, upload-time = "2026-07-02T20:20:05.308Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8d/8e/8170f2e0c217f88069c333d85bb976e536b332aecfcce606ddbdb249385f/llvmlite-0.48.0-cp314-cp314-macosx_12_0_arm64.whl", hash = "sha256:321f1ac39b462603f0b589751aecf2d237d056f6d005749c1752b6f23ec3f074", size = 40480650, upload-time = "2026-07-01T18:42:07.935Z" },
     { url = "https://files.pythonhosted.org/packages/d6/e1/05b50692b647cac3c18200ac485b04f342f00ed173c9cc46767274469a15/llvmlite-0.48.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:05f0103c8f2f96a37441337e3643863c01b8e83e530aff38960dcb383c54a065", size = 59890115, upload-time = "2026-07-01T18:42:17.805Z" },
