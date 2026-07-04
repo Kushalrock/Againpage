@@ -15,7 +15,6 @@ def main() -> None:
     import os, asyncio, uvicorn
     from againpage.storage import db, migrate
     from againpage.storage.repository import Repository
-    from againpage.storage.seed import seed_sample_issue
     from againpage.config import load_env
     load_env()   # pull DATABASE_URL / provider keys from a .env file if present
     port = int(os.environ.get("AGAINPAGE_API_PORT", "8000"))
@@ -26,9 +25,7 @@ def main() -> None:
         await pool.open()
         await migrate.apply(pool)
         repo = Repository(pool)
-        uid = await repo.ensure_local_user()
-        if (await repo.latest_issue(uid)) is None:
-            await seed_sample_issue(repo, uid)
+        await repo.ensure_local_user()
         app = create_app(repo)
         config = uvicorn.Config(app, host="127.0.0.1", port=port, loop="asyncio")
         await uvicorn.Server(config).serve()
