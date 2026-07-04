@@ -66,6 +66,9 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     repo = Repository(pool)
     scheduler = Scheduler(repo, queue)
     last_tick = 0.0
+    reclaimed = await queue.reclaim_stale()   # recover jobs orphaned by a previous crash/kill
+    if reclaimed:
+        log.info("requeued %d orphaned job(s) from a previous run", reclaimed)
     log.info("worker ready — polling the job queue (Ctrl+C to stop)")
     while True:
         # Scheduler heartbeat — must run every ~60s regardless of queue activity,

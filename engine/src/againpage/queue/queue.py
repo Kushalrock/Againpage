@@ -61,6 +61,15 @@ class Queue:
                     "UPDATE jobs SET status = 'cancelled' WHERE type = %s AND status = 'running'", (type,))
             return d.rowcount + c.rowcount
 
+    async def reclaim_stale(self) -> int:
+        """Requeue jobs left 'running' by a crashed/killed worker so they retry.
+        With a single worker, any 'running' job at startup is orphaned. The
+        atomic re-index makes a retry safe (nothing was committed). Returns count."""
+        async with self.pool.connection() as conn:
+            cur = await conn.execute(
+                "UPDATE jobs SET status='queued', locked_at=NULL WHERE status='running'")
+            return cur.rowcount
+
     async def is_cancelled(self, job_id: UUID) -> bool:
         """True if a running job has been cancelled (or vanished) — the signal a
         long job polls to abort cooperatively."""
