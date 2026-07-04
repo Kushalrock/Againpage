@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useSaveSettings } from '../api/queries'
 import { usePlatform } from '../platform'
 import { lengthLabel } from '../lib/readingLength'
+import { PROVIDER_DEFAULTS } from '../lib/providerDefaults'
 import { color, font } from '../theme/tokens'
 import type { Cadence, Provider, SettingsPatch } from '../types/settings'
 
@@ -82,9 +83,11 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     if (aiSource && apiKey) {
       await platform.keyStore.set(aiSource, apiKey)
     }
+    const provider = aiSource || 'openrouter'
     const patch: SettingsPatch = {
       vault_path: folder?.path ?? '',
-      provider: aiSource || 'openrouter',
+      provider,
+      ...PROVIDER_DEFAULTS[provider],
       cadence,
       reading_min: readingMin,
       notes_per_issue: notesPerIssue,

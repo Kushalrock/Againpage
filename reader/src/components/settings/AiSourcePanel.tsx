@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { usePlatform } from '../../platform'
 import { color, font } from '../../theme/tokens'
+import { PROVIDER_DEFAULTS } from '../../lib/providerDefaults'
 import type { Provider, Settings, SettingsPatch } from '../../types/settings'
 
 const PROVIDERS: { key: Provider; label: string }[] = [
@@ -8,12 +9,6 @@ const PROVIDERS: { key: Provider; label: string }[] = [
   { key: 'ollama', label: 'Ollama' },
   { key: 'custom', label: 'Custom' },
 ]
-
-const PLACEHOLDERS: Record<Provider, { emb: string; sum: string; write: string }> = {
-  custom: { emb: 'ollama/nomic-embed-text', sum: 'openrouter/openai/gpt-4o-mini', write: 'openrouter/openai/gpt-5' },
-  ollama: { emb: 'nomic-embed-text', sum: 'llama3.1:8b', write: 'llama3.1:70b' },
-  openrouter: { emb: 'openai/text-embedding-3-small', sum: 'openai/gpt-4o-mini', write: 'anthropic/claude-3.5-sonnet' },
-}
 
 type TestStatus = 'idle' | 'testing' | 'ok'
 
@@ -44,20 +39,47 @@ export function AiSourcePanel({
   const [ollamaKey, setOllamaKey] = useState('')
   const [testStatus, setTestStatus] = useState<TestStatus>('idle')
   const [provider, setProvider] = useState<Provider>(settings.provider)
+  // Model fields use local state so typing is applied immediately. (Binding
+  // the inputs straight to server settings + a debounced save swallows every
+  // keystroke, because the controlled value resets before the save resolves.)
+  const [models, setModels] = useState({
+    embed_model: settings.embed_model, summary_model: settings.summary_model, writer_model: settings.writer_model,
+  })
 
   // Keep the local provider tab in sync if the canonical settings change externally
   // (e.g. a query refetch after a save resolves with a different provider).
   useEffect(() => { setProvider(settings.provider) }, [settings.provider])
+  useEffect(() => {
+    setModels({ embed_model: settings.embed_model, summary_model: settings.summary_model, writer_model: settings.writer_model })
+  }, [settings.embed_model, settings.summary_model, settings.writer_model])
+
+  // Load any stored key back into the field on mount, so a saved key is
+  // visible instead of an always-blank input.
+  useEffect(() => {
+    platform.keyStore.get('openrouter').then((k) => { if (k) setOrKey(k) }).catch(() => {})
+    platform.keyStore.get('ollama').then((k) => { if (k) setOllamaKey(k) }).catch(() => {})
+  }, [platform])
 
   const isOR = provider === 'openrouter'
   const isOL = provider === 'ollama'
   const isCustom = provider === 'custom'
-  const ph = PLACEHOLDERS[provider]
+  const ph = PROVIDER_DEFAULTS[provider]
 
   function selectProvider(key: Provider) {
     setTestStatus('idle')
     setProvider(key)
-    onChange({ provider: key })
+    if (key === provider) { onChange({ provider: key }); return }
+    // Switching provider invalidates the old model names — populate the new
+    // provider's real defaults (not just placeholders) so the engine gets
+    // usable values.
+    const d = PROVIDER_DEFAULTS[key]
+    setModels(d)
+    onChange({ provider: key, ...d })
+  }
+
+  function commitModel(field: 'embed_model' | 'summary_model' | 'writer_model', v: string) {
+    setModels((m) => ({ ...m, [field]: v }))
+    onChange({ [field]: v })
   }
 
   async function testConnection() {
@@ -65,9 +87,9 @@ export function AiSourcePanel({
     await platform.connectionTest.run({
       provider,
       ollama_endpoint: settings.ollama_endpoint,
-      embed_model: settings.embed_model,
-      summary_model: settings.summary_model,
-      writer_model: settings.writer_model,
+      embed_model: models.embed_model,
+      summary_model: models.summary_model,
+      writer_model: models.writer_model,
     })
     setTestStatus('ok')
   }
@@ -169,27 +191,27 @@ export function AiSourcePanel({
         <div>
           <div style={{ fontSize: 13, color: color.muted, marginBottom: 6 }}>Embedding model</div>
           <input
-            value={settings.embed_model}
-            onChange={(e) => onChange({ embed_model: e.target.value })}
-            placeholder={ph.emb}
+            value={models.embed_model}
+            onChange={(e) => commitModel('embed_model', e.target.value)}
+            placeholder={ph.embed_model}
             style={{ ...inputStyle, fontSize: 13.5 }}
           />
         </div>
         <div>
           <div style={{ fontSize: 13, color: color.muted, marginBottom: 6 }}>Summarisation model</div>
           <input
-            value={settings.summary_model}
-            onChange={(e) => onChange({ summary_model: e.target.value })}
-            placeholder={ph.sum}
+            value={models.summary_model}
+            onChange={(e) => commitModel('summary_model', e.target.value)}
+            placeholder={ph.summary_model}
             style={{ ...inputStyle, fontSize: 13.5 }}
           />
         </div>
         <div>
           <div style={{ fontSize: 13, color: color.muted, marginBottom: 6 }}>Writer model</div>
           <input
-            value={settings.writer_model}
-            onChange={(e) => onChange({ writer_model: e.target.value })}
-            placeholder={ph.write}
+            value={models.writer_model}
+            onChange={(e) => commitModel('writer_model', e.target.value)}
+            placeholder={ph.writer_model}
             style={{ ...inputStyle, fontSize: 13.5 }}
           />
         </div>
