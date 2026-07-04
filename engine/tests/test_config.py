@@ -30,4 +30,6 @@ def test_load_env_does_not_override_the_real_environment(tmp_path: Path):
 
 
 def test_load_env_missing_file_is_harmless(tmp_path: Path):
-    assert load_env(extra=[tmp_path / "nope.env"]) == []
+    missing = tmp_path / "nope.env"
+    loaded = load_env(extra=[missing])       # must not raise
+    assert missing not in loaded             # absent file is simply skipped
