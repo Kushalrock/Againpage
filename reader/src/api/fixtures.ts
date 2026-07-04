@@ -326,7 +326,7 @@ const SETTINGS: Settings = {
   summary_model: 'openai/gpt-4o-mini',
   writer_model: 'anthropic/claude-3.5-sonnet',
 }
-let vaultNoteCount = 1284
+const vaultNoteCount = 1284
 
 export const fixtureClient: ApiClient = {
   getTodayIssue: async () => AMOR_FATI,
@@ -338,7 +338,7 @@ export const fixtureClient: ApiClient = {
     return { ...SETTINGS, vault_note_count: vaultNoteCount }
   },
   getStatus: async () => STATUS,
-  reindex: async (_force?: boolean) => ({ job_id: 'fixture-ingest' }),
+  reindex: async () => ({ job_id: 'fixture-ingest' }),
   triggerIssue: async () => ({ job_id: 'fixture-generate' }),
-  cancelJobs: async (_type: string) => ({ cancelled: 0 }),
+  cancelJobs: async () => ({ cancelled: 0 }),
 }

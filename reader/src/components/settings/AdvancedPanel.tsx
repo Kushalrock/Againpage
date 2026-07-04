@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { useReindex, useTriggerIssue, useCancelJobs, useStatus } from '../../api/queries'
 import { color } from '../../theme/tokens'
 
@@ -15,14 +14,12 @@ export function AdvancedPanel({ noteCount }: { noteCount: number }) {
   const reindex = useReindex()
   const generate = useTriggerIssue()
   const cancel = useCancelJobs()
-  // Poll only while something is in flight, so buttons re-enable promptly once
-  // a job finishes but we don't hammer the API when idle.
-  const [poll, setPoll] = useState<number | false>(false)
-  const status = useStatus({ refetchInterval: poll })
+  // Poll status while the Settings page is open so the buttons reflect job
+  // state (disable while running, re-enable when done) within a couple seconds.
+  const status = useStatus({ refetchInterval: 2500 })
   const active = status.data?.active_jobs ?? []
   const reindexing = active.includes('ingest') || active.includes('cluster')
   const generating = active.includes('generate')
-  useEffect(() => { setPoll(active.length ? 2000 : false) }, [active.length])
 
   function cancelReindex() {
     cancel.mutate('ingest'); cancel.mutate('cluster')

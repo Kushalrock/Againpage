@@ -57,13 +57,11 @@ export function AiSourcePanel({
   const [saving, setSaving] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
 
-  // Re-sync local state if the canonical settings change externally (e.g. a
-  // query refetch resolves after our own save).
-  useEffect(() => { setProvider(settings.provider) }, [settings.provider])
-  useEffect(() => { setEndpoint(settings.ollama_endpoint) }, [settings.ollama_endpoint])
-  useEffect(() => {
-    setModels({ embed_model: settings.embed_model, summary_model: settings.summary_model, writer_model: settings.writer_model })
-  }, [settings.embed_model, settings.summary_model, settings.writer_model])
+  // Local state is seeded from settings once at mount (the panel only renders
+  // after settings have loaded). We deliberately do NOT re-sync from settings
+  // afterwards: this panel is the sole editor of these fields, and re-syncing
+  // would clobber the user's unsaved edits whenever an unrelated panel's
+  // debounced auto-save triggers a settings refetch.
 
   // Load any stored key back into the field on mount.
   useEffect(() => {

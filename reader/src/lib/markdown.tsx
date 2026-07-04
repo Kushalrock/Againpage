@@ -2,12 +2,16 @@ import Markdown from 'react-markdown'
 import { color, font } from '../theme/tokens'
 
 export function LeadMarkdown({ source }: { source: string }) {
+  // `firstPara` is re-created every render and mutated synchronously while
+  // react-markdown renders the paragraphs in this same pass, so the drop cap
+  // reliably lands on the first paragraph only. (Safe closure mutation.)
   let firstPara = true
   return (
     <Markdown
       components={{
         p({ children }) {
           const dropCap = firstPara
+          // eslint-disable-next-line react-hooks/immutability -- see note above
           firstPara = false
           return (
             <p style={{ fontSize: 19, lineHeight: 1.74, color: color.inkBody, marginTop: 24 }}>
