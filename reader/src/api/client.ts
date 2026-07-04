@@ -10,4 +10,5 @@ export interface ApiClient {
   getStatus(): Promise<import('../types/status').AppStatus>
   reindex(force?: boolean): Promise<{ job_id: string }>
   triggerIssue(): Promise<{ job_id: string }>
+  cancelJobs(type: string): Promise<{ cancelled: number }>
 }

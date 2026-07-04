@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { useSettings, useSaveSettings, useReindex } from '../api/queries'
+import { useSettings, useSaveSettings, useReindex, useStatus } from '../api/queries'
 import { NotesFolderPanel } from '../components/settings/NotesFolderPanel'
 import { AiSourcePanel } from '../components/settings/AiSourcePanel'
 import { ExcludedPathsPanel } from '../components/settings/ExcludedPathsPanel'
@@ -14,6 +14,8 @@ export function Settings() {
   const { data, isLoading } = useSettings()
   const save = useSaveSettings()
   const reindex = useReindex()
+  const status = useStatus()
+  const reindexing = (status.data?.active_jobs ?? []).some((t) => t === 'ingest' || t === 'cluster')
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => () => {
@@ -53,6 +55,7 @@ export function Settings() {
         settings={data}
         onSave={(patch) => save.mutateAsync(patch)}
         onReindex={() => reindex.mutateAsync(true)}
+        busy={reindexing}
       />
 
       <ExcludedPathsPanel

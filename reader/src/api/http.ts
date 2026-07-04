@@ -30,5 +30,6 @@ export function httpClient(baseUrl = apiBase()): ApiClient {
     getStatus: () => get('/status'),
     reindex: (force?: boolean) => post(force ? '/reindex?force=true' : '/reindex'),
     triggerIssue: () => post('/trigger'),
+    cancelJobs: (type: string) => post('/jobs/cancel?type=' + encodeURIComponent(type)),
   }
 }

@@ -38,10 +38,12 @@ export function AiSourcePanel({
   settings,
   onSave,
   onReindex,
+  busy = false,
 }: {
   settings: Settings
   onSave: (patch: SettingsPatch) => void | Promise<unknown>
   onReindex: () => void | Promise<unknown>
+  busy?: boolean   // a re-index is already running — block Save to avoid re-queueing
 }) {
   const platform = usePlatform()
   const [orKey, setOrKey] = useState('')
@@ -100,9 +102,12 @@ export function AiSourcePanel({
   async function save() {
     const needsReindex =
       models.embed_model !== settings.embed_model || models.summary_model !== settings.summary_model
-    if (needsReindex && !window.confirm(
-      'This changes the embedding or summarisation model, which re-summarises and re-clusters your entire vault (a full re-index). Continue?',
-    )) return
+    // Always confirm on Save; the message depends on whether an expensive
+    // re-index is required.
+    const message = needsReindex
+      ? 'This changes the embedding or summarisation model, which re-summarises and re-clusters your entire vault (a full re-index). Save and re-index now?'
+      : 'Save these AI source settings? They apply to your next edition — no re-index needed.'
+    if (!window.confirm(message)) return
 
     setSaving(true)
     try {
@@ -217,10 +222,11 @@ export function AiSourcePanel({
           {testStatus === 'testing' && 'Testing…'}
           {testStatus === 'ok' && 'Test again'}
         </button>
-        <button type="button" onClick={save} disabled={saving}
+        <button type="button" onClick={save} disabled={saving || busy}
           style={{ background: color.dark, border: `1px solid ${color.dark}`, borderRadius: 5,
-            padding: '10px 22px', fontSize: 14, color: color.paper, cursor: 'pointer', fontFamily: font.body }}>
-          {saving ? 'Saving…' : 'Save'}
+            padding: '10px 22px', fontSize: 14, color: color.paper, cursor: saving || busy ? 'default' : 'pointer',
+            opacity: saving || busy ? 0.5 : 1, fontFamily: font.body }}>
+          {saving ? 'Saving…' : busy ? 'Re-indexing…' : 'Save'}
         </button>
         {testStatus === 'ok' && !saveMsg && (
           <span style={{ fontSize: 14, color: color.ok, display: 'flex', alignItems: 'center', gap: 7 }}>

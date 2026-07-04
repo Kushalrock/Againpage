@@ -38,6 +38,20 @@ def test_status_and_reindex():
         assert client.post("/reindex").json()["job_id"]
 
 
+def test_active_jobs_reported_and_cancellable():
+    with start_blocking_portal() as portal:
+        repo = portal.call(_prep)
+        uid = portal.call(repo.ensure_local_user)
+        portal.call(repo.upsert_settings, uid, {"vault_path": "/v"})
+        app = create_app(repo)
+        client = TestClient(app); client.portal = portal
+        assert client.get("/status").json()["active_jobs"] == []
+        assert client.post("/trigger").json()["job_id"]                 # enqueue a generate job
+        assert "generate" in client.get("/status").json()["active_jobs"]
+        assert client.post("/jobs/cancel?type=generate").json()["cancelled"] >= 1
+        assert "generate" not in client.get("/status").json()["active_jobs"]
+
+
 def test_reindex_force_flag_enqueues_force_payload():
     from againpage.queue.queue import Queue
     with start_blocking_portal() as portal:

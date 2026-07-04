@@ -40,9 +40,19 @@ export function useStatus(opts?: { refetchInterval?: number | false }) {
 }
 export function useReindex() {
   const client = useClient()
-  return useMutation({ mutationFn: (force?: boolean) => client.reindex(force) })
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn: (force?: boolean) => client.reindex(force),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['status'] }) })
 }
 export function useTriggerIssue() {
   const client = useClient()
-  return useMutation({ mutationFn: () => client.triggerIssue() })
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn: () => client.triggerIssue(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['status'] }) })
+}
+export function useCancelJobs() {
+  const client = useClient()
+  const queryClient = useQueryClient()
+  return useMutation({ mutationFn: (type: string) => client.cancelJobs(type),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['status'] }) })
 }

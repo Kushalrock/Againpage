@@ -40,6 +40,23 @@ class Queue:
                 return None
             return Job(id=row["id"], type=row["type"], payload=row["payload"], attempts=row["attempts"])
 
+    async def active_types(self) -> list[str]:
+        """Distinct types of jobs currently queued or running — so the UI can
+        disable a trigger while its job is in flight (avoiding duplicate queueing)."""
+        async with self.pool.connection() as conn:
+            cur = await conn.execute(
+                "SELECT DISTINCT type FROM jobs WHERE status IN ('queued','running')")
+            return sorted(r[0] for r in await cur.fetchall())
+
+    async def cancel(self, type: str) -> int:
+        """Remove queued (not-yet-started) jobs of a type — including ones
+        waiting to retry. A running job can't be interrupted mid-flight, so it
+        is left to finish. Returns how many were removed."""
+        async with self.pool.connection() as conn:
+            cur = await conn.execute(
+                "DELETE FROM jobs WHERE type = %s AND status = 'queued'", (type,))
+            return cur.rowcount
+
     async def complete(self, job_id: UUID) -> None:
         async with self.pool.connection() as conn:
             await conn.execute("UPDATE jobs SET status='done' WHERE id=%s", (job_id,))

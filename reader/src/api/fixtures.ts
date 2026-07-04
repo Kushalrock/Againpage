@@ -6,6 +6,7 @@ import type { Settings, SettingsResponse, SettingsPatch } from '../types/setting
 export const STATUS: import('../types/status').AppStatus = {
   indexed: true, theme_count: 12, note_count: 1284, issue_count: 47,
   latest_issue_date: '2026-06-30', next_edition_at: null, delivery_time: '07:00', cadence: 'daily',
+  active_jobs: [],
 }
 
 export const AMOR_FATI: IssueResponse = {
@@ -339,4 +340,5 @@ export const fixtureClient: ApiClient = {
   getStatus: async () => STATUS,
   reindex: async (_force?: boolean) => ({ job_id: 'fixture-ingest' }),
   triggerIssue: async () => ({ job_id: 'fixture-generate' }),
+  cancelJobs: async (_type: string) => ({ cancelled: 0 }),
 }

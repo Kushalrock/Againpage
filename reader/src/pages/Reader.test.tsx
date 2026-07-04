@@ -12,10 +12,12 @@ function mk(status: AppStatus, hasIssue: boolean): ApiClient {
     getIssue: async () => AMOR_FATI, getArchive: async () => ({ groups: [], total: 0 }),
     getSettings: async () => ({}) as never, saveSettings: async () => ({}) as never,
     getStatus: async () => status, reindex: async () => ({ job_id: 'i' }), triggerIssue: async () => ({ job_id: 'g' }),
+    cancelJobs: async () => ({ cancelled: 0 }),
   }
 }
 const S = (o: Partial<AppStatus>): AppStatus => ({ indexed: true, theme_count: 1, note_count: 5,
-  issue_count: 0, latest_issue_date: null, next_edition_at: null, delivery_time: '07:00', cadence: 'daily', ...o })
+  issue_count: 0, latest_issue_date: null, next_edition_at: null, delivery_time: '07:00', cadence: 'daily',
+  active_jobs: [], ...o })
 function wrap(client: ApiClient, onNavigate: (s: string) => void = () => {}, issueId: string | null = null) {
   const qc = new QueryClient()
   return render(<QueryClientProvider client={qc}>

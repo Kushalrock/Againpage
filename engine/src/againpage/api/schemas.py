@@ -68,3 +68,4 @@ class AppStatus(BaseModel):
     next_edition_at: str | None
     delivery_time: str
     cadence: str
+    active_jobs: list[str] = []   # job types currently queued/running (ingest|cluster|generate)

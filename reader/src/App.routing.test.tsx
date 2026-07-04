@@ -36,7 +36,7 @@ test('Reader compose-themes CTA navigates to Settings when not indexed', async (
   // (fixtureClient's STATUS.indexed is true by default, so it can't be used for this case.)
   const notIndexedStatus: AppStatus = {
     indexed: false, theme_count: 0, note_count: 0, issue_count: 0,
-    latest_issue_date: null, next_edition_at: null, delivery_time: '07:00', cadence: 'daily',
+    latest_issue_date: null, next_edition_at: null, delivery_time: '07:00', cadence: 'daily', active_jobs: [],
   }
   const notIndexedSettings: SettingsResponse = {
     vault_path: '~/Documents/Athenaeum', excluded_paths: [], profile_text: '',
@@ -54,6 +54,7 @@ test('Reader compose-themes CTA navigates to Settings when not indexed', async (
     getStatus: async () => notIndexedStatus,
     reindex: async () => ({ job_id: 'test-ingest' }),
     triggerIssue: async () => ({ job_id: 'test-generate' }),
+    cancelJobs: async () => ({ cancelled: 0 }),
   }
   const qc = new QueryClient()
   render(<QueryClientProvider client={qc}>

@@ -44,14 +44,17 @@ test('selecting a provider fills that provider default model names', () => {
   expect(screen.getByDisplayValue(PROVIDER_DEFAULTS.custom.writer_model)).toBeInTheDocument()
 })
 
-test('does NOT auto-save; Save persists the patch', async () => {
+test('does NOT auto-save; Save confirms then persists (writer-only → no re-index)', async () => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
   const { saved, reindexed } = renderPanel()
   fireEvent.change(screen.getByDisplayValue('w'), { target: { value: 'anthropic/claude-sonnet-5' } })
   expect(saved.length).toBe(0)                               // editing alone saves nothing
   fireEvent.click(screen.getByText('Save'))
   await waitFor(() => expect(saved.length).toBe(1))
+  expect(confirm).toHaveBeenCalled()                          // a confirmation prompt appears on every Save
   expect(saved[0].writer_model).toBe('anthropic/claude-sonnet-5')
   expect(reindexed()).toBe(0)                                // writer-only change → no re-index
+  confirm.mockRestore()
 })
 
 test('changing the embedding model confirms and triggers a re-index on Save', async () => {

@@ -1,4 +1,5 @@
-import { useReindex, useTriggerIssue } from '../../api/queries'
+import { useEffect, useState } from 'react'
+import { useReindex, useTriggerIssue, useCancelJobs, useStatus } from '../../api/queries'
 import { color } from '../../theme/tokens'
 
 function btnStyle(disabled: boolean): React.CSSProperties {
@@ -6,27 +7,46 @@ function btnStyle(disabled: boolean): React.CSSProperties {
     padding: '10px 18px', fontSize: 14, color: color.inkStrong, cursor: disabled ? 'default' : 'pointer',
     opacity: disabled ? 0.5 : 1, fontFamily: "'Newsreader', Georgia, serif" }
 }
+const cancelStyle: React.CSSProperties = { marginLeft: 12, background: 'transparent',
+  border: `1px solid ${color.accent}`, borderRadius: 5, padding: '9px 14px', fontSize: 13,
+  color: color.accent, cursor: 'pointer', fontFamily: "'Newsreader', Georgia, serif" }
 
 export function AdvancedPanel({ noteCount }: { noteCount: number }) {
   const reindex = useReindex()
   const generate = useTriggerIssue()
+  const cancel = useCancelJobs()
+  // Poll only while something is in flight, so buttons re-enable promptly once
+  // a job finishes but we don't hammer the API when idle.
+  const [poll, setPoll] = useState<number | false>(false)
+  const status = useStatus({ refetchInterval: poll })
+  const active = status.data?.active_jobs ?? []
+  const reindexing = active.includes('ingest') || active.includes('cluster')
+  const generating = active.includes('generate')
+  useEffect(() => { setPoll(active.length ? 2000 : false) }, [active.length])
+
+  function cancelReindex() {
+    cancel.mutate('ingest'); cancel.mutate('cluster')
+  }
+
   return (
     <div style={{ padding: '28px 0', borderBottom: `1px solid ${color.border}` }}>
       <div style={{ fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: color.faint, fontWeight: 600 }}>Advanced</div>
       <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <button type="button" disabled={reindex.isPending} style={btnStyle(reindex.isPending)}
+          <button type="button" disabled={reindexing || reindex.isPending} style={btnStyle(reindexing || reindex.isPending)}
             onClick={() => reindex.mutate(false)}>Re-index notes &amp; embeddings</button>
-          {reindex.isSuccess && <span style={{ marginLeft: 12, fontSize: 14, color: color.ok }}>Queued ✓</span>}
+          {reindexing && <button type="button" style={cancelStyle} onClick={cancelReindex}>Cancel</button>}
+          {reindexing && <span style={{ marginLeft: 12, fontSize: 14, color: color.muted, fontStyle: 'italic' }}>Re-indexing…</span>}
           {reindex.isError && <span style={{ marginLeft: 12, fontSize: 14, color: color.accent }}>Couldn't queue — is a notes folder set?</span>}
           <p style={{ fontSize: 14, lineHeight: 1.55, color: color.muted, marginTop: 8 }}>
             Reads your notes folder, refreshes summaries + embeddings, and re-composes your themes. {noteCount} notes.
           </p>
         </div>
         <div>
-          <button type="button" disabled={generate.isPending} style={btnStyle(generate.isPending)}
+          <button type="button" disabled={generating || generate.isPending} style={btnStyle(generating || generate.isPending)}
             onClick={() => generate.mutate()}>Generate an issue now</button>
-          {generate.isSuccess && <span style={{ marginLeft: 12, fontSize: 14, color: color.ok }}>Queued ✓</span>}
+          {generating && <button type="button" style={cancelStyle} onClick={() => cancel.mutate('generate')}>Cancel</button>}
+          {generating && <span style={{ marginLeft: 12, fontSize: 14, color: color.muted, fontStyle: 'italic' }}>Composing…</span>}
         </div>
       </div>
     </div>

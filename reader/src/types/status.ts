@@ -7,4 +7,5 @@ export interface AppStatus {
   next_edition_at: string | null
   delivery_time: string
   cadence: string
+  active_jobs: string[]   // job types currently queued/running (ingest|cluster|generate)
 }

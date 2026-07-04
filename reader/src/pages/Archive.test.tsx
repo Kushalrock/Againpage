@@ -7,12 +7,14 @@ import type { AppStatus } from '../types/status'
 import { Archive } from './Archive'
 
 const S = (o: Partial<AppStatus>): AppStatus => ({ indexed: true, theme_count: 1, note_count: 5,
-  issue_count: 0, latest_issue_date: null, next_edition_at: '2999-01-01T07:00:00', delivery_time: '07:00', cadence: 'daily', ...o })
+  issue_count: 0, latest_issue_date: null, next_edition_at: '2999-01-01T07:00:00', delivery_time: '07:00', cadence: 'daily',
+  active_jobs: [], ...o })
 function mk(status: AppStatus, populated: boolean): ApiClient {
   return { getTodayIssue: async () => ({}) as never, getIssue: async () => ({}) as never,
     getArchive: async () => (populated ? ARCHIVE : { groups: [], total: 0 }),
     getSettings: async () => ({}) as never, saveSettings: async () => ({}) as never,
-    getStatus: async () => status, reindex: async () => ({ job_id: 'i' }), triggerIssue: async () => ({ job_id: 'g' }) }
+    getStatus: async () => status, reindex: async () => ({ job_id: 'i' }), triggerIssue: async () => ({ job_id: 'g' }),
+    cancelJobs: async () => ({ cancelled: 0 }) }
 }
 function wrap(client: ApiClient, onOpen: (id: string) => void = () => {}, onNavigate: (s: string) => void = () => {}) {
   const qc = new QueryClient()

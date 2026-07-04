@@ -131,6 +131,12 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
         job_id = await queue.enqueue("ingest", {"force": True} if force else {})
         return {"job_id": str(job_id)}
 
+    @r.post("/jobs/cancel")
+    async def cancel_jobs(type: str):
+        if queue is None:
+            raise HTTPException(503, "queue unavailable")
+        return {"cancelled": await queue.cancel(type)}
+
     @r.get("/status")
     async def status():
         uid = await repo.ensure_local_user()
@@ -150,6 +156,7 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
             latest_issue_date=(latest.issue_date.isoformat() if latest else None),
             next_edition_at=next_edition_at,
             delivery_time=(s.delivery_time.strftime("%H:%M") if s and s.delivery_time else "07:00"),
-            cadence=(s.cadence if s else "daily"))
+            cadence=(s.cadence if s else "daily"),
+            active_jobs=(await queue.active_types() if queue else []))
 
     return r
