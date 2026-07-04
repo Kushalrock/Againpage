@@ -34,6 +34,12 @@ services:
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
     ports: ["8000:8000"]
+    # The API scans the vault for /status note counts and can test a host Ollama,
+    # so it needs the same mount + host gateway as the worker.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ${VAULT_PATH:-./notes}:/vault:ro
     depends_on:
       db: { condition: service_healthy }
     healthcheck:
@@ -46,6 +52,8 @@ services:
       start_period: 20s
 
   worker:
+    # Keep this a SINGLE replica — reclaim_stale() requeues any 'running' job at
+    # startup, which is only safe when no other worker is concurrently running.
     build: { context: ./engine }
     command: ["againpage-worker"]
     environment:
