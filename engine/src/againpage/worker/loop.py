@@ -55,12 +55,25 @@ async def handle_ingest(job: Job, *, repo, provider, queue, settings) -> None:
         await queue.enqueue("cluster", {})   # chain a re-cluster after a full-vault ingest
 
 async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
+    import time as _t
     queue = Queue(pool)
     repo = Repository(pool)
     scheduler = Scheduler(repo, queue)
     last_tick = 0.0
     log.info("worker ready — polling the job queue (Ctrl+C to stop)")
     while True:
+        # Scheduler heartbeat — must run every ~60s regardless of queue activity,
+        # so scheduled editions fire even when the queue is idle (the normal
+        # state). Local (naive) now: delivery_time is the user's local wall-clock
+        # and the cadence day-gap is measured in local days, not UTC. A tick
+        # error must not kill the worker loop.
+        if _t.monotonic() - last_tick > 60:
+            last_tick = _t.monotonic()
+            try:
+                await scheduler.tick(now=datetime.now())
+            except Exception:  # noqa: BLE001
+                log.exception("scheduler tick failed")
+
         job = await queue.claim()
         if job is None:
             await asyncio.sleep(1.0); continue
@@ -85,16 +98,6 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
             # Log the real error — otherwise a failing job retries invisibly forever.
             log.exception("job %s: %s — FAILED (attempt %d), will retry", job.id, job.type, job.attempts)
             await queue.fail(job.id, retry_in=timedelta(seconds=min(60, 2 ** job.attempts)))
-        import time as _t
-        if _t.monotonic() - last_tick > 60:
-            last_tick = _t.monotonic()
-            # Local (naive) now: delivery_time is the user's local wall-clock, and the
-            # cadence day-gap is measured in the user's local days — not UTC.
-            # Guard the tick: a scheduler error must not kill the whole worker loop.
-            try:
-                await scheduler.tick(now=datetime.now())
-            except Exception:  # noqa: BLE001
-                log.exception("scheduler tick failed")
 
 def main() -> None:  # pragma: no cover
     import os
