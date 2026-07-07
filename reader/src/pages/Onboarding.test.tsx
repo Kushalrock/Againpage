@@ -3,7 +3,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ClientContext } from '../api/queries'
 import { fixtureClient } from '../api/fixtures'
 import { PlatformContext, type Platform } from '../platform'
+import { storedApiBase } from '../api/base'
 import { Onboarding } from './Onboarding'
+
+afterEach(() => localStorage.clear())
 
 function fakePlatform(): Platform {
   return {
@@ -29,4 +32,20 @@ test('cannot advance step 1 without a folder, can after picking', async () => {
   expect(screen.getByText(/Point AgainPage at your notes/i)).toBeInTheDocument()
   fireEvent.click(screen.getByText(/Choose folder/i))
   expect(await screen.findByText(/42 notes found/i)).toBeInTheDocument()
+})
+
+test('can add a folder by typing an engine-side path (home-lab / remote engine)', async () => {
+  wrap()
+  fireEvent.click(screen.getByText(/Begin/i))                 // step 0 -> 1
+  fireEvent.change(screen.getByLabelText(/folder path/i), { target: { value: '/vault' } })
+  fireEvent.click(screen.getByText(/Add path/i))
+  expect(await screen.findByText(/scanned when you index/i)).toBeInTheDocument()  // added, no client count
+  fireEvent.click(screen.getByText(/Continue/i))              // now un-gated
+  expect(screen.queryByText(/Point AgainPage at your notes/i)).not.toBeInTheDocument()
+})
+
+test('the engine URL field persists a base URL for a remote engine', () => {
+  wrap()
+  fireEvent.change(screen.getByLabelText(/engine URL/i), { target: { value: 'http://server:8000' } })
+  expect(storedApiBase()).toBe('http://server:8000')
 })

@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSaveSettings } from '../api/queries'
+import { setApiBase, storedApiBase } from '../api/base'
 import { usePlatform } from '../platform'
 import { lengthLabel } from '../lib/readingLength'
 import { PROVIDER_DEFAULTS } from '../lib/providerDefaults'
@@ -66,6 +68,9 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [notesPerIssue, setNotesPerIssue] = useState(3)
   const [deliveryTime, setDeliveryTime] = useState('07:00')
   const [profileText, setProfileText] = useState('')
+  const [engineUrl, setEngineUrl] = useState(storedApiBase())
+  const [pathInput, setPathInput] = useState('')
+  const queryClient = useQueryClient()
 
   const canNext = step === 1 ? folders.length > 0 : step === 2 ? !!aiSource : true
 
@@ -73,7 +78,18 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     const result = await platform.folderPicker.pick()
     if (result && !folders.some((f) => f.path === result.path)) setFolders([...folders, result])
   }
+  function addPath() {
+    const p = pathInput.trim()
+    if (p && !folders.some((f) => f.path === p)) setFolders([...folders, { path: p, count: 0 }])
+    setPathInput('')
+  }
   function removeFolder(path: string) { setFolders(folders.filter((f) => f.path !== path)) }
+
+  // Persist the engine URL as the user types; re-check the connection on blur so
+  // that if a remote engine is now reachable (and already set up), the app can
+  // leave onboarding on its own.
+  function changeEngineUrl(url: string) { setEngineUrl(url); setApiBase(url) }
+  function applyEngineUrl() { void queryClient.invalidateQueries() }
 
   async function finish() {
     const provider = aiSource || 'openrouter'
@@ -138,6 +154,24 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               <p style={{ fontSize: 18, lineHeight: 1.6, color: color.muted, maxWidth: 420, margin: '22px auto 0' }}>
                 Three calm choices and Againpage will start composing a daily edition from the notes you already keep. It takes about a minute.
               </p>
+              <div style={{ maxWidth: 420, margin: '30px auto 0', textAlign: 'left' }}>
+                <label style={{ fontSize: 13, color: color.faint }}>
+                  Engine URL <span style={{ fontStyle: 'italic' }}>— advanced; only if the engine runs on another machine</span>
+                </label>
+                <input
+                  value={engineUrl}
+                  onChange={(e) => changeEngineUrl(e.target.value)}
+                  onBlur={applyEngineUrl}
+                  placeholder="http://localhost:8000"
+                  aria-label="engine URL"
+                  style={{ width: '100%', marginTop: 6, background: color.card, border: `1px solid ${color.borderStrong}`,
+                    borderRadius: 6, padding: '10px 12px', fontFamily: font.mono, fontSize: 13, color: color.ink }}
+                />
+                <div style={{ fontSize: 12.5, color: color.faint, marginTop: 6, lineHeight: 1.5 }}>
+                  Leave as-is if you're running Againpage on this computer. Set it to e.g.{' '}
+                  <span style={{ fontFamily: font.mono }}>http://your-server:8000</span> to use an engine hosted elsewhere.
+                </div>
+              </div>
             </div>
           )}
 
@@ -176,7 +210,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                           <div style={{ fontFamily: font.mono, fontSize: 15, color: color.inkStrong }}>{f.path}</div>
                           <div style={{ fontSize: 14, color: color.ok, marginTop: 8, display: 'flex', alignItems: 'center', gap: 7 }}>
                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: color.ok, display: 'inline-block' }} />
-                            {f.count} notes found · ready
+                            {f.count > 0 ? `${f.count} notes found · ready` : 'added · scanned when you index'}
                           </div>
                         </div>
                         <button type="button" onClick={() => removeFolder(f.path)} aria-label={`remove ${f.path}`}
@@ -194,10 +228,33 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   </button>
                   <div style={{ marginTop: 18, display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: 1.55, color: color.muted }}>
                     <span style={{ color: color.ok, flex: '0 0 auto', fontWeight: 700 }}>✓</span>
-                    <span>Indexing happens on your machine. You can fine-tune folders and exclusions later, in Settings.</span>
+                    <span>Indexing happens wherever the engine runs. You can fine-tune folders and exclusions later, in Settings.</span>
                   </div>
                 </>
               )}
+              <div style={{ marginTop: 18 }}>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    value={pathInput}
+                    onChange={(e) => setPathInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') addPath() }}
+                    placeholder="/vault  (or a path the engine can read)"
+                    aria-label="folder path"
+                    style={{ flex: 1, background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 6,
+                      padding: '10px 12px', fontFamily: font.mono, fontSize: 14, color: color.ink }}
+                  />
+                  <button type="button" onClick={addPath}
+                    style={{ background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+                      padding: '10px 16px', fontSize: 14, color: color.muted, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    Add path
+                  </button>
+                </div>
+                <p style={{ fontSize: 13, color: color.faint, marginTop: 8, lineHeight: 1.5 }}>
+                  Type the folder path <em>as the engine sees it</em> — e.g.{' '}
+                  <span style={{ fontFamily: font.mono }}>/vault</span> in the Docker setup, or a path on your home-lab
+                  server. A path on this computer only works when the engine runs here too.
+                </p>
+              </div>
             </div>
           )}
 
