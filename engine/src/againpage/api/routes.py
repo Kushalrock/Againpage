@@ -1,10 +1,11 @@
 from datetime import date, datetime, timezone
+from pathlib import Path
 from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from againpage.storage.repository import Repository
 from againpage.core.models import IssueContent, IssueRow, SettingsRow
 from againpage.api.schemas import (IssueResponse, ArchiveItem, ArchiveGroup, ArchiveResponse,
-    SettingsResponse, ProviderTestRequest, ProviderTestResult, VaultStatus)
+    SettingsResponse, ProviderTestRequest, ProviderTestResult, VaultStatus, NoteExpansion)
 from againpage.queue.queue import Queue
 from againpage.providers.factory import make_provider
 from againpage.vault.scan import scan_vaults
@@ -114,6 +115,23 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
         s = await repo.get_settings(uid)
         return VaultStatus(vault_paths=s.vault_paths, note_count=_count(s),
             scanned_at=datetime.now(timezone.utc).isoformat())
+
+    @r.get("/notes/expand")
+    async def expand_note(title: str):
+        """A rich ~500-word standalone summary of one note (by title), generated
+        on demand from its full text — for reading a single note in depth."""
+        uid = await repo.ensure_local_user()
+        note = await repo.note_by_title(uid, title)
+        if not note:
+            raise HTTPException(404, "note not found")
+        s = await repo.get_settings(uid)
+        provider = make_provider(s)
+        try:
+            body = Path(note.vault_path).read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            body = note.summary or ""     # file moved/unavailable → expand from the stored summary
+        text = await provider.expand_note(note.title, body, model=(s.summary_model or ""))
+        return NoteExpansion(title=note.title, text=text)
 
     from againpage.api.schemas import AppStatus
     from againpage.scheduler.scheduler import Scheduler

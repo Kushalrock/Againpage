@@ -50,6 +50,9 @@ class OllamaProvider(Provider):
         content = await self._chat(model, system, prompts.writer_user(payload))
         return extract_json(content)
 
+    async def expand_note(self, title: str, body: str, *, model: str) -> str:
+        return await self._chat(model, prompts.NOTE_EXPAND_SYSTEM, prompts.note_expand_user(title, body))
+
     async def health(self, *, models: list[str]) -> ProviderHealth:
         client = self._client()
         try:

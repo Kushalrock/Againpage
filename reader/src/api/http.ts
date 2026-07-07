@@ -31,5 +31,6 @@ export function httpClient(baseUrl = apiBase()): ApiClient {
     reindex: (force?: boolean) => post(force ? '/reindex?force=true' : '/reindex'),
     triggerIssue: () => post('/trigger'),
     cancelJobs: (type: string) => post('/jobs/cancel?type=' + encodeURIComponent(type)),
+    expandNote: (title: string) => get('/notes/expand?title=' + encodeURIComponent(title)),
   }
 }

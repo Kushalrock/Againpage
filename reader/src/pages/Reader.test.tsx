@@ -13,6 +13,7 @@ function mk(status: AppStatus, hasIssue: boolean): ApiClient {
     getSettings: async () => ({}) as never, saveSettings: async () => ({}) as never,
     getStatus: async () => status, reindex: async () => ({ job_id: 'i' }), triggerIssue: async () => ({ job_id: 'g' }),
     cancelJobs: async () => ({ cancelled: 0 }),
+    expandNote: async () => ({ title: '', text: '' }),
   }
 }
 const S = (o: Partial<AppStatus>): AppStatus => ({ indexed: true, theme_count: 1, note_count: 5,

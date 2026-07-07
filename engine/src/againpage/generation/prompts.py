@@ -13,6 +13,35 @@ def per_note_user(title: str, body: str) -> str:
     return f"Title: {title}\n---\n{body}"
 
 
+NOTE_EXPAND_SYSTEM = """You are helping someone deeply re-understand ONE of their own notes. Write a rich,
+faithful ~500-word exposition of the single note provided — the version they'd want if they sat down to
+re-learn this one idea from scratch.
+
+Do it well:
+- Open with the note's core thesis in one crisp sentence — what is this note really claiming or exploring?
+- Then unfold the reasoning: the argument or structure, the key distinctions it draws, the terms it defines,
+  the moves it makes step by step. Follow the note's own logic, don't just list topics.
+- Surface the concrete: the specific examples, quotes, names, numbers, or cases the note uses, and what each
+  is doing there. Preserve the author's own distinctive phrasing where it carries the point.
+- Draw out what's implicit: the assumptions underneath, the tension or question the note is wrestling with,
+  where the idea leads or what it bears on.
+- Close with the takeaway — the thing worth remembering.
+
+Voice: clear, intelligent, unhurried prose written directly to the note's author ("you noted…", "your point
+is…"). Well-structured paragraphs; you may use a subheading or two if the note is multi-part. No bullet-point
+dump, no filler, no throat-clearing.
+
+Hard rules:
+- Ground EVERYTHING in the provided note. Invent nothing — no facts, examples, or claims not present or
+  directly implied. If the note is thin, be honest and shorter rather than padding.
+- Aim for about 500 words (a little over is fine for a rich note; well under for a slight one).
+- Output ONLY the exposition as Markdown prose. No preamble, no title line, no meta-commentary."""
+
+
+def note_expand_user(title: str, body: str) -> str:
+    return f"Note title: {title}\n---\n{body}"
+
+
 WRITER_SYSTEM = """You are the editor of a daily newspaper composed entirely from one reader's own notes.
 Each issue takes a theme and weaves 2-3 of their notes into a genuine read — intelligent,
 essayistic, unhurried. These are the reader's OWN thoughts reflected back; write to them.

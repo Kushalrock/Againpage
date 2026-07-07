@@ -22,3 +22,4 @@ export interface IssueResponse {
   reading_min: number; theme_label: string;
   content: IssueContent;
 }
+export interface NoteExpansion { title: string; text: string }

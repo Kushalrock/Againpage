@@ -48,3 +48,11 @@ async def test_error_surfaces_model_and_body():
     except httpx.HTTPStatusError as e:
         assert "google/gemini-3.5-flash-lite" in str(e)      # names the offending model
         assert "not a valid model id" in str(e)              # includes OpenRouter's reason
+
+@respx.mock
+async def test_expand_note_returns_prose():
+    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
+        return_value=_chat("A long, detailed standalone summary of the note."))
+    p = OpenRouterProvider(api_key="sk-test")
+    out = await p.expand_note("Amor Fati", "the note body", model="openai/gpt-4o-mini")
+    assert out == "A long, detailed standalone summary of the note."

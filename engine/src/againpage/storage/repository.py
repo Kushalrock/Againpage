@@ -151,6 +151,17 @@ class Repository:
             row = await cur.fetchone()
             return _note_row(row) if row else None
 
+    async def note_by_title(self, user_id, title):
+        """Most-recently-updated active note with this title — used to expand a
+        note the reader clicked in an edition (editions reference notes by title)."""
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute(
+                "SELECT * FROM notes WHERE user_id=%s AND title=%s AND active "
+                "ORDER BY updated_at DESC LIMIT 1", (user_id, title))
+            row = await cur.fetchone()
+            return _note_row(row) if row else None
+
     async def active_notes(self, user_id):
         async with self.pool.connection() as conn:
             conn.row_factory = dict_row

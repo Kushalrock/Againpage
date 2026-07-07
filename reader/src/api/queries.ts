@@ -12,6 +12,11 @@ export function useTodayIssue(opts?: { refetchInterval?: number | false }) {
   return useQuery({ queryKey: ['issue', 'today'], queryFn: () => client.getTodayIssue(),
     refetchInterval: opts?.refetchInterval ?? false, retry: false })
 }
+export function useExpandNote(title: string | null) {
+  const client = useClient()
+  return useQuery({ queryKey: ['note-expand', title], queryFn: () => client.expandNote(title!),
+    enabled: !!title, staleTime: Infinity, retry: false })   // cache per note for the session
+}
 export function useIssue(id: string | undefined, opts?: { enabled?: boolean }) {
   const client = useClient()
   return useQuery({ queryKey: ['issue', id], queryFn: () => client.getIssue(id!),

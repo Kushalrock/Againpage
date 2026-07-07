@@ -14,7 +14,8 @@ function mk(status: AppStatus, populated: boolean): ApiClient {
     getArchive: async () => (populated ? ARCHIVE : { groups: [], total: 0 }),
     getSettings: async () => ({}) as never, saveSettings: async () => ({}) as never,
     getStatus: async () => status, reindex: async () => ({ job_id: 'i' }), triggerIssue: async () => ({ job_id: 'g' }),
-    cancelJobs: async () => ({ cancelled: 0 }) }
+    cancelJobs: async () => ({ cancelled: 0 }),
+    expandNote: async () => ({ title: '', text: '' }) }
 }
 function wrap(client: ApiClient, onOpen: (id: string) => void = () => {}, onNavigate: (s: string) => void = () => {}) {
   const qc = new QueryClient()

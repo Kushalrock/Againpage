@@ -24,6 +24,8 @@ class RoutingProvider(Provider):
         p, m = self._route(model); return await p.embed(text, model=m, task=task)
     async def generate(self, payload, *, model):
         p, m = self._route(model); return await p.generate(payload, model=m)
+    async def expand_note(self, title, body, *, model):
+        p, m = self._route(model); return await p.expand_note(title, body, model=m)
     async def health(self, *, models):
         merged: dict[str, bool] = {}
         reachable = False

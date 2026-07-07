@@ -59,6 +59,10 @@ class VaultStatus(BaseModel):
     note_count: int
     scanned_at: str
 
+class NoteExpansion(BaseModel):
+    title: str
+    text: str
+
 class AppStatus(BaseModel):
     indexed: bool
     theme_count: int

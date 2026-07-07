@@ -55,6 +55,7 @@ test('Reader compose-themes CTA navigates to Settings when not indexed', async (
     reindex: async () => ({ job_id: 'test-ingest' }),
     triggerIssue: async () => ({ job_id: 'test-generate' }),
     cancelJobs: async () => ({ cancelled: 0 }),
+    expandNote: async () => ({ title: '', text: '' }),
   }
   const qc = new QueryClient()
   render(<QueryClientProvider client={qc}>

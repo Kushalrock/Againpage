@@ -1,7 +1,7 @@
 import { color, font } from '../../theme/tokens'
 
-export function EditionHead({ dek, title, standfirst, sources }: {
-  dek: string; title: string; standfirst: string; sources: string[]
+export function EditionHead({ dek, title, standfirst, sources, onOpenNote }: {
+  dek: string; title: string; standfirst: string; sources: string[]; onOpenNote?: (title: string) => void
 }) {
   return (
     <div style={{ textAlign: 'center', maxWidth: 740, margin: '46px auto 0' }}>
@@ -21,7 +21,18 @@ export function EditionHead({ dek, title, standfirst, sources }: {
       <div style={{ margin: '24px auto 0', width: 46, borderTop: `1px solid ${color.borderStrong}` }} />
       <div style={{ marginTop: 18, fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase',
         color: color.faint, fontWeight: 600 }}>
-        Composed from your notes · {sources.join(' · ')}
+        Composed from your notes ·{' '}
+        {sources.map((s, i) => (
+          <span key={s}>
+            {i > 0 && ' · '}
+            <button type="button" onClick={() => onOpenNote?.(s)} title={`Read "${s}" in full`}
+              style={{ background: 'none', border: 'none', padding: 0, cursor: onOpenNote ? 'pointer' : 'default',
+                font: 'inherit', letterSpacing: 'inherit', textTransform: 'inherit',
+                color: onOpenNote ? color.accent : color.faint }}>
+              {s}
+            </button>
+          </span>
+        ))}
       </div>
     </div>
   )

@@ -1,4 +1,4 @@
-import type { IssueResponse } from '../types/issue'
+import type { IssueResponse, NoteExpansion } from '../types/issue'
 import type { ArchiveResponse } from '../types/archive'
 
 export interface ApiClient {
@@ -11,4 +11,5 @@ export interface ApiClient {
   reindex(force?: boolean): Promise<{ job_id: string }>
   triggerIssue(): Promise<{ job_id: string }>
   cancelJobs(type: string): Promise<{ cancelled: number }>
+  expandNote(title: string): Promise<NoteExpansion>
 }

@@ -341,4 +341,7 @@ export const fixtureClient: ApiClient = {
   reindex: async () => ({ job_id: 'fixture-ingest' }),
   triggerIssue: async () => ({ job_id: 'fixture-generate' }),
   cancelJobs: async () => ({ cancelled: 0 }),
+  expandNote: async (title: string) => ({ title,
+    text: `**${title}** — a fuller, ~500-word standalone reading of this note would appear here, unfolding its `
+      + `core thesis, the reasoning, the key distinctions, and the takeaway.` }),
 }

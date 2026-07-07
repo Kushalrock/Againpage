@@ -10,3 +10,6 @@ class Provider(ABC):
     async def generate(self, payload: dict, *, model: str) -> dict: ...
     @abstractmethod
     async def health(self, *, models: list[str]) -> ProviderHealth: ...
+    @abstractmethod
+    async def expand_note(self, title: str, body: str, *, model: str) -> str:
+        """A rich ~500-word standalone exposition of a single note (plain markdown)."""
