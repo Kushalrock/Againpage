@@ -53,17 +53,19 @@ toolchain installed.
 
 ### 1. Install the essentials
 
-- **[Docker](https://docs.docker.com/get-docker/)** (Docker Desktop is fine).
-- **[Ollama](https://ollama.com/download)** — Againpage generates embeddings
-  locally through Ollama, so it's required even if you use a hosted model for
-  the writing. Pull an embedding model and a chat model:
+- **[Docker](https://docs.docker.com/get-docker/)** (Docker Desktop is fine) —
+  no other toolchain needed.
+- **An AI source** — pick one:
+  - **[OpenRouter](https://openrouter.ai/) key** _(simplest)_ — a single hosted
+    key covers both the writing **and** the embeddings. Nothing else to install.
+  - **[Ollama](https://ollama.com/download)** _(fully local & private)_ — run the
+    models on your own machine; no key, and nothing leaves your computer. Pull an
+    embedding model and a chat model, and leave Ollama running:
 
-  ```bash
-  ollama pull nomic-embed-text     # embeddings (local, private)
-  ollama pull qwen2.5              # a local chat/writer model (optional if you use OpenRouter)
-  ```
-
-  Leave Ollama running.
+    ```bash
+    ollama pull nomic-embed-text   # embeddings
+    ollama pull qwen2.5            # writer / summariser
+    ```
 
 ### 2. Get Againpage
 
@@ -93,10 +95,10 @@ When it finishes building, open **<http://localhost:5173>**.
 
 1. **Notes folder** — in onboarding, set your notes folder to `/vault` (that's
    your `VAULT_PATH`, mounted read-only inside the app).
-2. **AI source** — choose **Ollama** for a fully local/private setup, and set the
-   endpoint to `http://host.docker.internal:11434`. Pick the embedding and chat
-   models you pulled above (or choose **OpenRouter** for the writer and paste your
-   key). Use **Test connection** to confirm.
+2. **AI source** — choose **OpenRouter** (paste your key; it provides both the
+   writer and the embedding models) or **Ollama** for a fully local/private setup
+   (set the endpoint to `http://host.docker.internal:11434` and pick the models
+   you pulled). Use **Test connection** to confirm.
 3. **Index** — open **Settings → Advanced** and run **Re-index notes & embeddings**.
    It reads your vault, summarises and embeds each note, and composes your themes.
 4. **Read** — generate your first edition and open it. Every past edition is kept
@@ -104,6 +106,44 @@ When it finishes building, open **<http://localhost:5173>**.
 
 To stop the stack: `Ctrl-C`, then `docker compose down`. Your data persists in a
 local Docker volume between runs.
+
+## Home lab / self-hosted (advanced)
+
+Againpage splits cleanly into an **engine** (Postgres + API + worker — the heavy,
+always-on part) and a **reader** (the UI). You can run the engine on a home
+server or NAS and keep only the reader on your laptop.
+
+**On the server — run the engine (and point it at your notes):**
+
+Mount your notes on the server (a network share works — e.g. an NFS/SMB mount at
+`/mnt/notes`); the **engine** reads the vault, so the folder only needs to be
+reachable by the server, not by your laptop. Then bring up just the database,
+API, and worker:
+
+```bash
+VAULT_PATH="/mnt/notes" OPENROUTER_API_KEY="sk-or-..." \
+  docker compose up --build -d db api worker
+```
+
+The API listens on `0.0.0.0:8000` — reachable from other machines on your
+network as `http://SERVER_IP:8000`.
+
+**On your machine — run only the reader, pointed at the server:**
+
+```bash
+pnpm install
+VITE_API_BASE="http://SERVER_IP:8000" pnpm --filter reader dev
+# then open http://localhost:5173
+```
+
+`VITE_API_BASE` tells the reader where the engine is (it defaults to
+`localhost:8000`). You can also bake it into a static reader build with the same
+variable and serve the built files anywhere.
+
+> **⚠️ Security.** The engine API has **no authentication** (Againpage is
+> single-user) and allows all origins. Only expose it on a **trusted LAN** or
+> behind a **VPN / authenticating reverse proxy** — never put it directly on the
+> public internet. Your notes are readable by anyone who can reach the API.
 
 ## Privacy
 
