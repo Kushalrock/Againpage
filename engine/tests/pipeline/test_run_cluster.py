@@ -14,7 +14,7 @@ class LabelProvider:
     async def health(self, *, models): ...
 
 def _settings(uid):
-    return SettingsRow(user_id=uid, vault_path="/v", excluded_paths=[], profile_text=None,
+    return SettingsRow(user_id=uid, vault_paths=["/v"], excluded_paths=[], profile_text=None,
         cadence_days=1, delivery_time=time(7), reading_min=5, notes_per_issue=3,
         provider="openrouter", ollama_endpoint="", embed_model="e", summary_model="s", writer_model="w")
 

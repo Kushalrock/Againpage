@@ -22,8 +22,8 @@ async def test_default_settings_and_patch():
     uid = await repo.ensure_local_user()
     s = await repo.get_settings(uid)
     assert s.reading_min == 5 and s.provider == "openrouter"
-    s2 = await repo.upsert_settings(uid, {"reading_min": 12, "vault_path": "/n"})
-    assert s2.reading_min == 12 and s2.vault_path == "/n"
+    s2 = await repo.upsert_settings(uid, {"reading_min": 12, "vault_paths": ["/n"]})
+    assert s2.reading_min == 12 and s2.vault_paths == ["/n"]
 
 async def test_insert_and_fetch_issue():
     repo = await fresh_repo()

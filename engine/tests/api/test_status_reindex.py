@@ -27,7 +27,7 @@ def test_status_and_reindex():
         assert s0["indexed"] is False and s0["theme_count"] == 0 and s0["next_edition_at"] is None
         assert client.post("/reindex").status_code == 409
         # set a vault + index one note + a theme → indexed, reindex enqueues, next_edition_at set
-        portal.call(repo.upsert_settings, uid, {"vault_path": "/v"})
+        portal.call(repo.upsert_settings, uid, {"vault_paths": ["/v"]})
         n = portal.call(repo.upsert_note, NewNote(user_id=uid, vault_path="a.md", title="A",
             content_hash="h", substantive=True, summary="s", tags=["t"], embedding=[0.1]*768))
         portal.call(repo.replace_clustering, uid, [ClusterInput(label="T", centroid=[0.1]*768,
@@ -42,7 +42,7 @@ def test_active_jobs_reported_and_cancellable():
     with start_blocking_portal() as portal:
         repo = portal.call(_prep)
         uid = portal.call(repo.ensure_local_user)
-        portal.call(repo.upsert_settings, uid, {"vault_path": "/v"})
+        portal.call(repo.upsert_settings, uid, {"vault_paths": ["/v"]})
         app = create_app(repo)
         client = TestClient(app); client.portal = portal
         assert client.get("/status").json()["active_jobs"] == []
@@ -57,7 +57,7 @@ def test_reindex_force_flag_enqueues_force_payload():
     with start_blocking_portal() as portal:
         repo = portal.call(_prep)
         uid = portal.call(repo.ensure_local_user)
-        portal.call(repo.upsert_settings, uid, {"vault_path": "/v"})
+        portal.call(repo.upsert_settings, uid, {"vault_paths": ["/v"]})
         app = create_app(repo)
         client = TestClient(app); client.portal = portal
         q = Queue(repo.pool)

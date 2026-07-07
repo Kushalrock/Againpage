@@ -6,7 +6,7 @@ from againpage.providers.openrouter import OpenRouterProvider
 from againpage.providers.ollama import OllamaProvider
 
 def _settings(provider: str) -> SettingsRow:
-    return SettingsRow(user_id=uuid4(), vault_path=None, excluded_paths=[], profile_text=None,
+    return SettingsRow(user_id=uuid4(), vault_paths=[], excluded_paths=[], profile_text=None,
         cadence_days=1, delivery_time=time(7), reading_min=5, notes_per_issue=3,
         provider=provider, ollama_endpoint="http://localhost:11434",
         embed_model=None, summary_model=None, writer_model=None)

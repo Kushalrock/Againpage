@@ -27,7 +27,7 @@ class ArchiveResponse(BaseModel):
     total: int
 
 class SettingsResponse(BaseModel):
-    vault_path: str
+    vault_paths: list[str]
     excluded_paths: list[str]
     profile_text: str
     cadence_days: int
@@ -55,7 +55,7 @@ class ProviderTestResult(BaseModel):
     detail: str = ""
 
 class VaultStatus(BaseModel):
-    vault_path: str
+    vault_paths: list[str]
     note_count: int
     scanned_at: str
 

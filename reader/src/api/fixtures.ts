@@ -313,7 +313,7 @@ export const ARCHIVE: ArchiveResponse = {
 }
 
 const SETTINGS: Settings = {
-  vault_path: '~/Documents/Athenaeum',
+  vault_paths: ['~/Documents/Athenaeum'],
   excluded_paths: ['./Templates', './Daily notes', '~/Vault/Private'],
   profile_text: '',
   cadence_days: 1,

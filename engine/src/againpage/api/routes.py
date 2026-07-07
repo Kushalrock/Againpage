@@ -7,17 +7,17 @@ from againpage.api.schemas import (IssueResponse, ArchiveItem, ArchiveGroup, Arc
     SettingsResponse, ProviderTestRequest, ProviderTestResult, VaultStatus)
 from againpage.queue.queue import Queue
 from againpage.providers.factory import make_provider
-from againpage.vault.scan import scan_vault
+from againpage.vault.scan import scan_vaults
 
 def make_provider_for_test(req: ProviderTestRequest):
     # keys come from env; a SettingsRow-lite is enough for the factory
-    return make_provider(SettingsRow(user_id=None, vault_path=None, excluded_paths=[],
+    return make_provider(SettingsRow(user_id=None, vault_paths=[], excluded_paths=[],
         profile_text=None, cadence_days=1, delivery_time=None, reading_min=5, notes_per_issue=3,
         provider=req.provider, ollama_endpoint=req.ollama_endpoint,
         embed_model=req.embed_model, summary_model=req.summary_model, writer_model=req.writer_model))
 
 def _settings_response(s, count: int) -> SettingsResponse:
-    return SettingsResponse(vault_path=s.vault_path or "", excluded_paths=s.excluded_paths,
+    return SettingsResponse(vault_paths=s.vault_paths, excluded_paths=s.excluded_paths,
         profile_text=s.profile_text or "", cadence_days=s.cadence_days,
         delivery_time=s.delivery_time.strftime("%H:%M") if s.delivery_time else "07:00",
         reading_min=s.reading_min, notes_per_issue=s.notes_per_issue, provider=s.provider,
@@ -26,10 +26,10 @@ def _settings_response(s, count: int) -> SettingsResponse:
         vault_note_count=count)
 
 def _count(s) -> int:
-    if not s.vault_path:
+    if not s.vault_paths:
         return 0
     try:
-        return len(scan_vault(s.vault_path, excluded=s.excluded_paths))
+        return len(scan_vaults(s.vault_paths, excluded=s.excluded_paths))
     except OSError:
         return 0
 
@@ -112,7 +112,7 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
     async def vault_status():
         uid = await repo.ensure_local_user()
         s = await repo.get_settings(uid)
-        return VaultStatus(vault_path=s.vault_path or "", note_count=_count(s),
+        return VaultStatus(vault_paths=s.vault_paths, note_count=_count(s),
             scanned_at=datetime.now(timezone.utc).isoformat())
 
     from againpage.api.schemas import AppStatus
@@ -124,7 +124,7 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
             raise HTTPException(503, "queue unavailable")
         uid = await repo.ensure_local_user()
         s = await repo.get_settings(uid)
-        if not s or not s.vault_path:
+        if not s or not s.vault_paths:
             raise HTTPException(409, "no notes folder set")
         # force=true re-processes every note even if unchanged (used after a
         # summary/embedding model change).

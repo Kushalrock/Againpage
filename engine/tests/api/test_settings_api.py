@@ -27,7 +27,7 @@ def test_get_and_put_settings():
         s = client.get("/settings").json()
         assert s["provider"] == "openrouter" and s["reading_min"] == 5
         updated = client.put("/settings", json={"reading_min": 12, "cadence_days": 7,
-            "vault_path": "/notes"}).json()
+            "vault_paths": ["/notes"]}).json()
         assert updated["reading_min"] == 12 and updated["cadence_days"] == 7
         assert "vault_note_count" in updated
 

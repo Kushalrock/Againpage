@@ -42,9 +42,9 @@ async def ingest_file(path: str, *, repo: Repository, provider: Provider,
     await repo.replace_links(note.id, edges)
     return "ingested"
 
-async def ingest_vault(vault_path: str, *, repo: Repository, provider: Provider,
+async def ingest_vault(vault_paths: list[str], *, repo: Repository, provider: Provider,
                        settings: SettingsRow, user_id: UUID, cancelled=None) -> dict:
-    paths = scan.scan_vault(vault_path, excluded=settings.excluded_paths)
+    paths = scan.scan_vaults(vault_paths, excluded=settings.excluded_paths)
     known = _known_map(paths)
     counts = {"ingested": 0, "skipped": 0, "pruned": 0, "cancelled": False}
     for p in paths:

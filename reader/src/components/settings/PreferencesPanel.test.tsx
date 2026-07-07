@@ -5,7 +5,7 @@ import { fixtureClient } from '../../api/fixtures'
 import { PreferencesPanel } from './PreferencesPanel'
 import type { Settings, SettingsPatch } from '../../types/settings'
 
-const base: Settings = { vault_path: '/v', excluded_paths: [], profile_text: '', cadence_days: 1,
+const base: Settings = { vault_paths: ['/v'], excluded_paths: [], profile_text: '', cadence_days: 1,
   delivery_time: '07:00', reading_min: 7, notes_per_issue: 3, provider: 'openrouter',
   ollama_endpoint: 'http://localhost:11434', embed_model: 'e', summary_model: 's', writer_model: 'w' }
 

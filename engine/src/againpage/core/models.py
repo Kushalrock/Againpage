@@ -46,7 +46,7 @@ class IssueContent(BaseModel):
 @dataclass
 class SettingsRow:
     user_id: UUID
-    vault_path: str | None
+    vault_paths: list[str]
     excluded_paths: list[str]
     profile_text: str | None
     cadence_days: int

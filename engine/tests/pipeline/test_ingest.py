@@ -16,7 +16,7 @@ class FakeProvider:
     async def health(self, *, models): ...
 
 def _settings(uid, vault) -> SettingsRow:
-    return SettingsRow(user_id=uid, vault_path=vault, excluded_paths=[], profile_text=None,
+    return SettingsRow(user_id=uid, vault_paths=[vault], excluded_paths=[], profile_text=None,
         cadence_days=1, delivery_time=time(7), reading_min=5, notes_per_issue=3,
         provider="openrouter", ollama_endpoint="", embed_model="e", summary_model="s", writer_model="w")
 
@@ -32,7 +32,7 @@ async def test_bulk_ingest_populates_notes_and_links(tmp_path: Path):
     (tmp_path / "Control.md").write_text("# Control\nEpictetus dichotomy.")
     (tmp_path / "stub.md").write_text("stub note, nothing here")
     repo = await _repo(); uid = await repo.ensure_local_user()
-    counts = await ingest_vault(str(tmp_path), repo=repo, provider=FakeProvider(),
+    counts = await ingest_vault([str(tmp_path)], repo=repo, provider=FakeProvider(),
                                 settings=_settings(uid, str(tmp_path)), user_id=uid)
     active = {n.vault_path.split("/")[-1]: n for n in await repo.active_notes(uid)}
     assert "amor.md" in active and "Control.md" in active

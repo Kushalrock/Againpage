@@ -57,7 +57,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const save = useSaveSettings()
 
   const [step, setStep] = useState(0)
-  const [folder, setFolder] = useState<{ path: string; count: number } | null>(null)
+  const [folders, setFolders] = useState<{ path: string; count: number }[]>([])
   const [aiSource, setAiSource] = useState<Provider | ''>('')
   const [apiKey, setApiKey] = useState('')
   const [cadenceDays, setCadenceDays] = useState(1)
@@ -66,12 +66,13 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [deliveryTime, setDeliveryTime] = useState('07:00')
   const [profileText, setProfileText] = useState('')
 
-  const canNext = step === 1 ? !!folder : step === 2 ? !!aiSource : true
+  const canNext = step === 1 ? folders.length > 0 : step === 2 ? !!aiSource : true
 
   async function pickFolder() {
     const result = await platform.folderPicker.pick()
-    if (result) setFolder(result)
+    if (result && !folders.some((f) => f.path === result.path)) setFolders([...folders, result])
   }
+  function removeFolder(path: string) { setFolders(folders.filter((f) => f.path !== path)) }
 
   async function finish() {
     if (aiSource && apiKey) {
@@ -79,7 +80,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     }
     const provider = aiSource || 'openrouter'
     const patch: SettingsPatch = {
-      vault_path: folder?.path ?? '',
+      vault_paths: folders.map((f) => f.path),
       provider,
       ...PROVIDER_DEFAULTS[provider],
       cadence_days: cadenceDays,
@@ -142,7 +143,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               <p style={{ fontSize: 16, lineHeight: 1.6, color: color.muted, marginTop: 10 }}>
                 Choose the folder of markdown files it should read. This is the only thing you grant access to — and it never leaves your machine.
               </p>
-              {!folder && (
+              {folders.length === 0 && (
                 <button
                   type="button"
                   onClick={pickFolder}
@@ -157,36 +158,37 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   </div>
                 </button>
               )}
-              {folder && (
+              {folders.length > 0 && (
                 <>
-                  <div
-                    style={{
-                      marginTop: 24, border: `1px solid ${color.dark}`, background: color.card, borderRadius: 8,
-                      padding: '24px 26px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16,
-                    }}
-                  >
-                    <div>
-                      <div style={labelStyle}>Notes folder</div>
-                      <div style={{ fontFamily: font.mono, fontSize: 15, color: color.inkStrong, marginTop: 6 }}>{folder.path}</div>
-                      <div style={{ fontSize: 14, color: color.ok, marginTop: 8, display: 'flex', alignItems: 'center', gap: 7 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: color.ok, display: 'inline-block' }} />
-                        {folder.count} notes found · ready
+                  <div style={{ marginTop: 24, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    {folders.map((f) => (
+                      <div key={f.path}
+                        style={{ border: `1px solid ${color.dark}`, background: color.card, borderRadius: 8,
+                          padding: '18px 22px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}
+                      >
+                        <div>
+                          <div style={{ fontFamily: font.mono, fontSize: 15, color: color.inkStrong }}>{f.path}</div>
+                          <div style={{ fontSize: 14, color: color.ok, marginTop: 8, display: 'flex', alignItems: 'center', gap: 7 }}>
+                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: color.ok, display: 'inline-block' }} />
+                            {f.count} notes found · ready
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => removeFolder(f.path)} aria-label={`remove ${f.path}`}
+                          style={{ background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+                            padding: '9px 14px', fontSize: 14, color: color.muted, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                          Remove
+                        </button>
                       </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={pickFolder}
-                      style={{
-                        background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
-                        padding: '9px 14px', fontSize: 14, color: color.muted, cursor: 'pointer', whiteSpace: 'nowrap',
-                      }}
-                    >
-                      Change
-                    </button>
+                    ))}
                   </div>
+                  <button type="button" onClick={pickFolder}
+                    style={{ marginTop: 12, background: 'transparent', border: `1px solid ${color.borderStrong}`,
+                      borderRadius: 5, padding: '10px 16px', fontSize: 14, color: color.muted, cursor: 'pointer' }}>
+                    + Add another folder
+                  </button>
                   <div style={{ marginTop: 18, display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: 1.55, color: color.muted }}>
                     <span style={{ color: color.ok, flex: '0 0 auto', fontWeight: 700 }}>✓</span>
-                    <span>Indexing happens on your machine. You can fine-tune which folders are included later, in Settings.</span>
+                    <span>Indexing happens on your machine. You can fine-tune folders and exclusions later, in Settings.</span>
                   </div>
                 </>
               )}
@@ -332,7 +334,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 Your first edition arrives<br />tomorrow at {to12h(deliveryTime)}.
               </h2>
               <p style={{ fontSize: 17, lineHeight: 1.6, color: color.muted, maxWidth: 440, margin: '18px auto 0' }}>
-                Composed from {folder?.count ?? 0} notes in your folder, {aiSummary}. Until then, here's a sample on the house.
+                Composed from {folders.reduce((s, f) => s + f.count, 0)} notes in your {folders.length === 1 ? 'folder' : 'folders'}, {aiSummary}. Until then, here's a sample on the house.
               </p>
               <button
                 type="button"

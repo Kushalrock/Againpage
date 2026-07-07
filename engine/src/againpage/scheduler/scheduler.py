@@ -27,7 +27,7 @@ class Scheduler:
     async def tick(self, *, now: datetime) -> bool:
         uid = await self.repo.ensure_local_user()
         settings = await self.repo.get_settings(uid)
-        if settings is None or not settings.vault_path:
+        if settings is None or not settings.vault_paths:
             return False
         if not await self.repo.themes(uid):        # gate: only auto-generate once indexed
             return False

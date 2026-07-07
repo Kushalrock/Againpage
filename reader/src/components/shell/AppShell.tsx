@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { color, font } from '../../theme/tokens'
+import { useSettings } from '../../api/queries'
 
 export type Screen = 'reader' | 'archive' | 'settings'
 
@@ -18,6 +19,8 @@ export function AppShell({
   onNavigate: (screen: Screen) => void
   children: ReactNode
 }) {
+  const { data: settings } = useSettings()
+  const folders = settings?.vault_paths ?? []
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <aside
@@ -87,19 +90,22 @@ export function AppShell({
               fontWeight: 600,
             }}
           >
-            Notes folder
+            {folders.length === 1 ? 'Notes folder' : 'Notes folders'}
           </div>
-          <div
-            style={{
-              fontFamily: font.mono,
-              fontSize: 12,
-              color: color.onDark,
-              marginTop: 6,
-              wordBreak: 'break-all',
-            }}
-          >
-            ~/Documents/Notes
-          </div>
+          {(folders.length ? folders : ['—']).map((p) => (
+            <div
+              key={p}
+              style={{
+                fontFamily: font.mono,
+                fontSize: 12,
+                color: color.onDark,
+                marginTop: 6,
+                wordBreak: 'break-all',
+              }}
+            >
+              {p.replace(/^.*\/([^/]+\/[^/]+)$/, '…/$1')}
+            </div>
+          ))}
           <div
             style={{
               fontSize: 12,

@@ -4,7 +4,7 @@ from againpage.core.models import SettingsRow
 from againpage.scheduler.scheduler import Scheduler
 
 def _s(cadence_days=1, dtime=time(7)):
-    return SettingsRow(user_id=uuid4(), vault_path="/v", excluded_paths=[], profile_text=None,
+    return SettingsRow(user_id=uuid4(), vault_paths=["/v"], excluded_paths=[], profile_text=None,
         cadence_days=cadence_days, delivery_time=dtime, reading_min=5, notes_per_issue=3,
         provider="openrouter", ollama_endpoint="", embed_model=None, summary_model=None, writer_model=None)
 

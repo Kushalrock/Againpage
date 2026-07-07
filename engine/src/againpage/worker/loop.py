@@ -51,7 +51,7 @@ async def handle_ingest(job: Job, *, repo, provider, queue, settings) -> None:
         # intact. Cancellable between notes.
         result = await run_reindex(repo=repo, provider=provider, queue=queue, settings=settings, job_id=job.id)
         log.info("forced re-index: %s", result)
-    elif settings.vault_path:
+    elif settings.vault_paths:
         # Cheap sync re-index: only changed notes are re-processed (content-hash
         # gate), themes replaced atomically by the chained cluster job. Probe the
         # embedding dimension in case it changed via manual settings.
@@ -61,7 +61,7 @@ async def handle_ingest(job: Job, *, repo, provider, queue, settings) -> None:
         changed = await repo.ensure_embedding_dim(len(probe))
         if changed:
             log.info("embedding dimension set to %d (re-embedding the whole vault)", len(probe))
-        counts = await ingest_vault(settings.vault_path, repo=repo, provider=provider,
+        counts = await ingest_vault(settings.vault_paths, repo=repo, provider=provider,
                                     settings=settings, user_id=settings.user_id, cancelled=cancelled)
         if not counts.get("cancelled"):
             await queue.enqueue("cluster", {})   # chain a re-cluster after a full-vault ingest

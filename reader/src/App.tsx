@@ -22,7 +22,7 @@ export default function App() {
   }
 
   if (isLoading) return <div style={{ padding: 48 }}>Loading…</div>
-  const needsOnboarding = !onboarded && !settings?.vault_path
+  const needsOnboarding = !onboarded && !settings?.vault_paths?.length
   if (needsOnboarding) return <Onboarding onDone={() => { setOnboarded(true); setScreen('reader') }} />
   return (
     <AppShell active={screen} onNavigate={(s) => navigate(s as Screen)}>

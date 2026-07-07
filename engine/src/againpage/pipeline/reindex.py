@@ -32,7 +32,7 @@ async def run_reindex(*, repo: Repository, provider: Provider, queue: Queue,
     probe = await provider.embed("dimension probe", model=settings.embed_model or "", task="clustering")
     dim = len(probe)
 
-    paths = scan.scan_vault(settings.vault_path, excluded=settings.excluded_paths)
+    paths = scan.scan_vaults(settings.vault_paths, excluded=settings.excluded_paths)
     staged: list[NewNote] = []
     for p in paths:
         if await cancelled():

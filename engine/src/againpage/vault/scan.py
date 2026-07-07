@@ -31,3 +31,12 @@ def scan_vault(root: str, *, excluded: list[str]) -> list[str]:
             if fn.endswith(".md"):
                 found.append(str((dp / fn).resolve()))
     return sorted(found)
+
+def scan_vaults(roots: list[str], *, excluded: list[str]) -> list[str]:
+    """Scan several notes folders into one deduplicated, sorted list — the same
+    note reachable from two roots (nesting/symlinks) is counted once."""
+    seen: set[str] = set()
+    for root in roots:
+        if root and root.strip():
+            seen.update(scan_vault(root, excluded=excluded))
+    return sorted(seen)

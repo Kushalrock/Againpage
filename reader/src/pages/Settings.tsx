@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react'
 import { useSettings, useSaveSettings, useReindex, useStatus } from '../api/queries'
 import { NotesFolderPanel } from '../components/settings/NotesFolderPanel'
 import { AiSourcePanel } from '../components/settings/AiSourcePanel'
-import { ExcludedPathsPanel } from '../components/settings/ExcludedPathsPanel'
 import { PreferencesPanel } from '../components/settings/PreferencesPanel'
 import { AdvancedPanel } from '../components/settings/AdvancedPanel'
 import { color, font } from '../theme/tokens'
@@ -46,9 +45,10 @@ export function Settings() {
       </header>
 
       <NotesFolderPanel
-        path={data.vault_path}
+        paths={data.vault_paths}
+        excludedPaths={data.excluded_paths}
         count={data.vault_note_count}
-        onChange={(patch) => scheduleSave(patch)}
+        onChange={(patch) => save.mutate(patch)}
       />
 
       <AiSourcePanel
@@ -56,11 +56,6 @@ export function Settings() {
         onSave={(patch) => save.mutateAsync(patch)}
         onReindex={() => reindex.mutateAsync(true)}
         busy={reindexing}
-      />
-
-      <ExcludedPathsPanel
-        paths={data.excluded_paths}
-        onChange={(paths) => scheduleSave({ excluded_paths: paths })}
       />
 
       <PreferencesPanel settings={data} onChange={(patch) => scheduleSave(patch)} />

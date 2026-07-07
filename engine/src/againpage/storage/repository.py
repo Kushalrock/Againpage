@@ -8,7 +8,7 @@ from againpage.core.models import (SettingsRow, IssueRow, NewIssue,
     NewNote, NoteRow, LinkEdge, NoteNeighbor, ThemeRow, ClusterInput,
     SelectionContext, ThemeCtx, LinkCtx, IssueNote)
 
-_SETTINGS_COLS = ("user_id","vault_path","excluded_paths","profile_text","cadence_days",
+_SETTINGS_COLS = ("user_id","vault_paths","excluded_paths","profile_text","cadence_days",
     "delivery_time","reading_min","notes_per_issue","provider","ollama_endpoint",
     "embed_model","summary_model","writer_model")
 
