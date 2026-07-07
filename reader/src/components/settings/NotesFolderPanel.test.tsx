@@ -24,10 +24,22 @@ test('lists folders and the post-exclusion count', () => {
   expect(screen.getByText(/after exclusions/i)).toBeInTheDocument()
 })
 
-test('add folder appends the picked path', async () => {
+test('folder picker appends the picked path', async () => {
   const patches = wrap(['/a'], [], '/new')
-  fireEvent.click(screen.getByText(/\+ add folder/i))
+  fireEvent.click(screen.getByText(/use folder picker/i))
   await waitFor(() => expect(patches.at(-1)).toEqual({ vault_paths: ['/a', '/new'] }))
+})
+
+test('typing a path adds it (the Docker-friendly way)', () => {
+  const patches = wrap(['/a'], [])
+  fireEvent.change(screen.getByLabelText(/add folder path/i), { target: { value: '/vault/journal' } })
+  fireEvent.click(screen.getByText('Add path'))
+  expect(patches.at(-1)).toEqual({ vault_paths: ['/a', '/vault/journal'] })
+})
+
+test('warns against the picker outside a dev/native setup', () => {
+  wrap(['/a'], [])
+  expect(screen.getByText(/only use the picker if you run the engine/i)).toBeInTheDocument()
 })
 
 test('remove folder drops it', () => {

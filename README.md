@@ -45,130 +45,113 @@ database, and — with a local model — never sends a single note over the netw
 - **Bring your own models** — local via **Ollama**, or hosted via **OpenRouter**,
   all configured in the app.
 
-## Getting started
+## Setting up
 
-Againpage runs as a small local stack (database + engine + reader). The easiest
-way to run it is with **Docker** — you don't need Node, Python, or any other
-toolchain installed.
+There are two ways to run Againpage:
 
-### 1. Install the essentials
+- **[For personal use](#for-personal-use)** — run the engine with **Docker** and
+  use the **downloaded reader app**. No coding tools required.
+- **[For development](#for-development)** — run everything from source with the
+  dev toolchain. You use your **own filesystem** directly, so none of the Docker
+  path caveats apply.
 
-- **[Docker](https://docs.docker.com/get-docker/)** (Docker Desktop is fine) —
-  no other toolchain needed.
-- **An AI source** — pick one:
-  - **[OpenRouter](https://openrouter.ai/) key** _(simplest)_ — a single hosted
-    key covers both the writing **and** the embeddings. Nothing else to install.
-  - **[Ollama](https://ollama.com/download)** _(fully local & private)_ — run the
-    models on your own machine; no key, and nothing leaves your computer. Pull an
-    embedding model and a chat model, and leave Ollama running:
+### For development
 
-    ```bash
-    ollama pull nomic-embed-text   # embeddings
-    ollama pull qwen2.5            # writer / summariser
-    ```
+Install the toolchain:
 
-### 2. Get Againpage
+| Tool | For |
+|---|---|
+| [Docker](https://docs.docker.com/get-docker/) | local Postgres (`pnpm db:up`) |
+| Node 24 + pnpm 10.30.3 | reader + workspace |
+| [uv](https://docs.astral.sh/uv/) + Python ≥ 3.14 | the engine |
+| Rust (stable) | building the desktop app (optional) |
 
 ```bash
-git clone <this-repo-url> againpage
-cd againpage
+pnpm install
+cd engine && uv sync && cd ..
+pnpm db:up                             # Postgres (pgvector) in Docker
+# then three terminals:
+cd engine && uv run againpage-api      # API   → :8000
+cd engine && uv run againpage-worker   # worker
+pnpm --filter reader dev               # reader → :5173
 ```
 
-### 3. Run the engine
+Run natively like this and the engine reads your **real filesystem** — you use
+ordinary absolute paths, and the folder picker works normally. None of the
+Docker mount rules below apply. Full details: [`CONTRIBUTING.md`](./CONTRIBUTING.md).
 
-Point `VAULT_PATH` at your notes folder and start the engine (Postgres + API +
-worker) in the background:
+### For personal use
+
+The **reader** is a downloadable desktop app; the **engine** (Postgres + API +
+worker) runs with Docker. First: install **Docker**, pick an **AI source** — an
+**[OpenRouter](https://openrouter.ai/) key** (one key covers writing **and**
+embeddings; simplest) or **[Ollama](https://ollama.com/download)** (fully local:
+`ollama pull nomic-embed-text` + a chat model) — and clone the repo:
 
 ```bash
-VAULT_PATH="/absolute/path/to/your/notes" docker compose up --build -d
+git clone <this-repo-url> againpage && cd againpage
 ```
 
-The engine's API is now at **`http://localhost:8000`**. `VAULT_PATH` is the
-**only** thing you set here — your provider, models, and API key are entered
-later in the reader's UI (and saved in the engine); no env vars needed.
-
-> **What `VAULT_PATH` is (and why it's the one exception).** The engine runs
-> inside Docker, which can't see your filesystem unless a folder is *mounted* in.
-> `VAULT_PATH` is that mount — it maps a folder on **the machine running Docker**
-> to `/vault` inside the container (so in the reader you set the notes folder to
-> `/vault`). It must be a real path on that host: for notes on a **network
-> share**, mount the share on the host first (NFS/SMB → e.g. `/mnt/notes`) and
-> set `VAULT_PATH=/mnt/notes` — a `\\server\share` URL won't work.
+> **⚠️ The one Docker rule — read this.** The engine runs in a container and can
+> only read a folder you *mount* into it. So **mount the *parent* folder** of your
+> notes as `VAULT_PATH`; it appears inside the engine at `/vault`. Then in the
+> reader, write each notes folder as **`/vault/<folder-name>`**. (A
+> `\\server\share` URL won't work — mount the share on the host first, then point
+> `VAULT_PATH` at that host path.)
 >
-> **Multiple note folders?** The reader accepts a *list* of folders, but the
-> engine can only read what's mounted. Easiest: point `VAULT_PATH` at a **common
-> parent** and add each subfolder (`/vault/work`, `/vault/journal`, …) in the
-> reader. Otherwise add extra bind mounts in `docker-compose.yaml`
-> (`- /host/other:/vault2:ro` under **both** `api` and `worker`) and add
-> `/vault2` in the reader.
+> **Do NOT use the reader's folder picker here.** It points at *your* machine,
+> which the containerized engine can't read — type `/vault/<folder-name>`
+> instead. The picker is only for the [development](#for-development) setup
+> (native engine, no Docker).
 
-### 4. Get the reader
-
-The reader is a small desktop app that connects to the engine.
-
-- **Download** the build for your OS (macOS `.dmg`, Windows `.exe`/`.msi`, Linux
-  `.AppImage`/`.deb`) from the **Releases** page and open it. If the engine is on
-  this machine, it connects to `http://localhost:8000` automatically.
-- **Or run from source:** `pnpm install && pnpm --filter reader dev`, then open
-  <http://localhost:5173>.
-
-### 5. First run (in the reader)
-
-1. **Notes folder** — set it to `/vault` (your `VAULT_PATH`, mounted read-only in
-   the engine). Type the path **as the engine sees it**.
-2. **AI source** — **OpenRouter** (one key covers writer + embeddings) or
-   **Ollama** for a fully local setup (`http://host.docker.internal:11434`). Use
-   **Test connection** to confirm.
-3. **Index** — **Settings → Advanced → Re-index notes & embeddings**.
-4. **Read** — generate your first edition. Every past edition lives in the archive.
-
-To stop the engine: `docker compose down`. Your data persists in a local Docker
-volume between runs.
-
-## Home lab / self-hosted (advanced)
-
-Againpage splits cleanly into an **engine** (Postgres + API + worker — the heavy,
-always-on part) and a **reader** (the UI). You can run the engine on a home
-server or NAS and keep only the reader on your laptop.
-
-**On the server — run the engine (and point it at your notes):**
-
-Mount your notes on the server (a network share works — e.g. an NFS/SMB mount at
-`/mnt/notes`); the **engine** reads the vault, so the folder only needs to be
-reachable by the server, not by your laptop. Then bring up just the database,
-API, and worker:
+#### 1. Everything on one machine
 
 ```bash
-VAULT_PATH="/mnt/notes" OPENROUTER_API_KEY="sk-or-..." pnpm engine:up
-#   ≡ docker compose up --build -d   (Postgres + API + worker)
+# mount the PARENT of your notes; it appears inside the engine at /vault
+VAULT_PATH="/Users/you/Documents" docker compose up --build -d
 ```
 
-The API listens on `0.0.0.0:8000` — reachable from other machines on your
-network as `http://SERVER_IP:8000`.
+Download the reader for your OS (macOS `.dmg`, Windows `.exe`/`.msi`, Linux
+`.AppImage`/`.deb`) from the **Releases** page and open it — it connects to
+`http://localhost:8000` automatically. Then, in the reader:
 
-**On your machine — run only the reader, pointed at the server:**
+1. **Notes folder** — type `/vault/<folder-name>`. E.g. notes in
+   `~/Documents/Notes` → you mounted `~/Documents`, so enter `/vault/Notes`. Add
+   as many `/vault/...` folders as you like.
+2. **AI source** — OpenRouter key, or Ollama at `http://host.docker.internal:11434`.
+   **Test connection.**
+3. **Index** — Settings → Advanced → **Re-index notes & embeddings**, then generate
+   and read.
 
-You have two ways to tell the reader where the engine lives:
+To stop the engine: `docker compose down` (data persists in a Docker volume).
 
-- **Simplest — in the UI.** Open the reader and, in onboarding, set the
-  **Engine URL** field (under the welcome step) to `http://SERVER_IP:8000`. It's
-  saved in your browser; no rebuild or env var needed.
-- **Or via env** when running/building the reader yourself:
+*Don't want Docker?* If you already have the dev tools, use
+[For development](#for-development) instead — it runs against your own
+filesystem, no mounting.
 
-  ```bash
-  pnpm install
-  VITE_API_BASE="http://SERVER_IP:8000" pnpm --filter reader dev   # open http://localhost:5173
-  ```
+#### 2. Split — home lab / server
 
-**Note on the notes folder:** in onboarding, type the path **as the engine sees
-it** (e.g. `/mnt/notes` or `/vault`), not a path on your laptop — the reader
-never reads files, the engine does. A local-only path yields 0 notes because the
-remote engine can't see it.
+Engine on a server or NAS, reader on your laptop.
 
-> **⚠️ Security.** The engine API has **no authentication** (Againpage is
-> single-user) and allows all origins. Only expose it on a **trusted LAN** or
-> behind a **VPN / authenticating reverse proxy** — never put it directly on the
-> public internet. Your notes are readable by anyone who can reach the API.
+**On the server** — mount the parent folder of your notes (a network share
+mounted on the server works) and start the engine:
+
+```bash
+VAULT_PATH="/mnt/notes" pnpm engine:up     # ≡ docker compose up --build -d ; API on 0.0.0.0:8000
+```
+
+**On your laptop** — download and open the reader, then **point it at the
+server** (required — otherwise every screen fails to load):
+
+1. Set the **Engine URL** to `http://SERVER_IP:8000` — in onboarding (welcome
+   step) or later in **Settings → Engine connection**.
+2. Set the notes folder to `/vault/<folder-name>` — the path on the **server**,
+   as mounted (again, type it; don't use the picker).
+3. AI source → index → read, as above.
+
+> **⚠️ Security.** The engine API is **unauthenticated** and single-user. Keep it
+> on a **trusted LAN or VPN** — never expose it to the public internet; anyone who
+> can reach it can read your notes.
 
 ## Privacy
 

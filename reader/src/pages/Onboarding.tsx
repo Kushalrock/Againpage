@@ -251,8 +251,9 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 </div>
                 <p style={{ fontSize: 13, color: color.faint, marginTop: 8, lineHeight: 1.5 }}>
                   Type the folder path <em>as the engine sees it</em> — e.g.{' '}
-                  <span style={{ fontFamily: font.mono }}>/vault</span> in the Docker setup, or a path on your home-lab
-                  server. A path on this computer only works when the engine runs here too.
+                  <span style={{ fontFamily: font.mono }}>/vault/your-folder</span> in the Docker setup, or a path on your
+                  home-lab server. <strong>Only use the folder picker if you run the engine natively with the dev tools</strong>
+                  {' '}(not Docker): it points at this computer, which the containerized engine can’t read.
                 </p>
               </div>
             </div>

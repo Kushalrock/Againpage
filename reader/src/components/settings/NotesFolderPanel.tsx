@@ -23,10 +23,15 @@ export function NotesFolderPanel({
 }) {
   const platform = usePlatform()
   const [newExcluded, setNewExcluded] = useState('')
+  const [newPath, setNewPath] = useState('')
 
   async function addFolder() {
     const result = await platform.folderPicker.pick()
     if (result && !paths.includes(result.path)) onChange({ vault_paths: [...paths, result.path] })
+  }
+  function addPath() {
+    const v = newPath.trim()
+    if (v && !paths.includes(v)) { onChange({ vault_paths: [...paths, v] }); setNewPath('') }
   }
   function removeFolder(p: string) { onChange({ vault_paths: paths.filter((x) => x !== p) }) }
   function addExcluded() {
@@ -55,11 +60,27 @@ export function NotesFolderPanel({
           </div>
         ))}
       </div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+        <input aria-label="add folder path" value={newPath} placeholder="/vault/your-folder"
+          onChange={(e) => setNewPath(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') addPath() }}
+          style={{ flex: 1, background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+            padding: '10px 12px', fontFamily: font.mono, fontSize: 14, color: color.ink }} />
+        <button type="button" onClick={addPath}
+          style={{ background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+            padding: '10px 16px', fontSize: 14, color: color.muted, cursor: 'pointer', whiteSpace: 'nowrap' }}>Add path</button>
+      </div>
       <button type="button" onClick={addFolder}
-        style={{ marginTop: 12, background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
-          padding: '10px 16px', fontSize: 14, color: color.muted, cursor: 'pointer' }}>
-        + Add folder
+        style={{ marginTop: 8, background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+          padding: '8px 14px', fontSize: 13, color: color.faint, cursor: 'pointer' }}>
+        Use folder picker…
       </button>
+      <p style={{ fontSize: 12.5, color: color.faint, marginTop: 8, lineHeight: 1.5 }}>
+        Type the path <em>as the engine sees it</em> — e.g.{' '}
+        <span style={{ fontFamily: font.mono }}>/vault/your-folder</span>. Only use the picker if you run the engine
+        <strong> natively with the dev tools</strong> (not Docker): it points at <em>this</em> computer, which the
+        containerized engine can’t read.
+      </p>
 
       <div style={{ fontSize: 14, color: color.muted, marginTop: 14 }}>
         <span style={{ fontFamily: font.display, fontSize: 17, color: color.inkStrong }}>{count}</span> notes
