@@ -1,0 +1,62 @@
+name: Release
+
+# Build the reader desktop app for macOS, Windows, and Linux on every version
+# tag and attach the installers to a draft GitHub release. The reader is the
+# default (reader-only) Tauri build — no bundled engine — so no PyInstaller /
+# Postgres assets are required; run the engine separately with Docker.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest      # .dmg / .app (universal per runner arch)
+          - platform: ubuntu-latest     # .AppImage / .deb
+          - platform: windows-latest    # .exe (NSIS) / .msi
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build & release the reader app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: "Againpage ${{ github.ref_name }}"
+          releaseBody: |
+            Againpage reader desktop app (alpha).
+
+            Run the engine separately (Postgres + API + worker):
+            `docker compose up --build -d` — then open the reader and point it at
+            the engine (defaults to http://localhost:8000).
+          releaseDraft: true
+          prerelease: true

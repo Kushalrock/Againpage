@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  engine:
+    name: engine (pytest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      # conftest derives againpage_test from this and uses the postgres DB as admin.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/againpage
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv (+ Python)
+        uses: astral-sh/setup-uv@v5
+      - name: Sync dependencies
+        working-directory: engine
+        run: uv sync
+      - name: Run tests
+        working-directory: engine
+        run: uv run pytest -q
+
+  reader:
+    name: reader (lint · test · build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter reader lint
+      - run: pnpm --filter reader test
+      - run: pnpm --filter reader build
