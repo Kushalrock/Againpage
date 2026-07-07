@@ -8,6 +8,7 @@
     "db:down": "docker compose -f infra/docker-compose.yaml down",
     "db:reset": "cd engine && uv run python scripts/reset_db.py",
     "dev": "pnpm db:up && pnpm --filter desktop tauri dev",
+    "build:desktop": "pnpm --filter desktop tauri build",
     "stack:up": "docker compose up --build -d",
     "stack:down": "docker compose down",
     "stack:logs": "docker compose logs -f"
