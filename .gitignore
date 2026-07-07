@@ -43,3 +43,7 @@ pnpm-debug.log*
 
 # ---- Repo scan artifact ----
 temp/
+
+# ---- Local process artifacts (kept on disk, never in git) ----
+docs/
+.superpowers/
