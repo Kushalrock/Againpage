@@ -1,6 +1,7 @@
 # Againpage engine (Postgres + API + worker) — deploy this anywhere:
 #
-#   OPENROUTER_API_KEY=sk-or-...  VAULT_PATH=/abs/path/to/notes  docker compose up --build -d
+#   VAULT_PATH=/abs/path/to/notes  docker compose up --build -d
+#   (provider, models, and API key are entered in the reader UI, not here)
 #
 # The API listens on :8000 (Postgres on :5432). The reader is a separate,
 # downloadable desktop app — point it at this engine's URL (e.g.
@@ -10,8 +11,13 @@
 # Notes:
 # - Put OPENROUTER_API_KEY in the shell env or an `.env` beside this file, or
 #   just enter keys in the reader's settings instead.
-# - VAULT_PATH mounts your notes read-only at /vault; set the notes folder to
-#   /vault in the reader. Defaults to ./notes if unset.
+# - VAULT_PATH bind-mounts your notes (read-only) into the engine at /vault, so
+#   set the reader's notes folder to /vault. It must be a path on THIS host
+#   (Docker can't see unmounted paths); for a network share, mount it on the
+#   host first and point VAULT_PATH at that mount. Defaults to ./notes if unset.
+# - Multiple note folders: point VAULT_PATH at a common parent and add each
+#   subfolder in the reader, OR add more bind mounts (e.g. `- /host/other:/vault2:ro`
+#   under BOTH api and worker below) and add /vault2 in the reader.
 # - For a host-run Ollama, set the Ollama endpoint to
 #   http://host.docker.internal:11434 (fully local, off the network).
 # - The API is unauthenticated (single-user) — keep it on a trusted LAN / VPN.

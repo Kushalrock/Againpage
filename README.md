@@ -80,12 +80,27 @@ Point `VAULT_PATH` at your notes folder and start the engine (Postgres + API +
 worker) in the background:
 
 ```bash
-OPENROUTER_API_KEY="sk-or-..." VAULT_PATH="/absolute/path/to/your/notes" \
-  docker compose up --build -d
+VAULT_PATH="/absolute/path/to/your/notes" docker compose up --build -d
 ```
 
-(Going fully local with Ollama instead? Drop the key and choose Ollama in the
-reader later.) The engine's API is now at **`http://localhost:8000`**.
+The engine's API is now at **`http://localhost:8000`**. `VAULT_PATH` is the
+**only** thing you set here — your provider, models, and API key are entered
+later in the reader's UI (and saved in the engine); no env vars needed.
+
+> **What `VAULT_PATH` is (and why it's the one exception).** The engine runs
+> inside Docker, which can't see your filesystem unless a folder is *mounted* in.
+> `VAULT_PATH` is that mount — it maps a folder on **the machine running Docker**
+> to `/vault` inside the container (so in the reader you set the notes folder to
+> `/vault`). It must be a real path on that host: for notes on a **network
+> share**, mount the share on the host first (NFS/SMB → e.g. `/mnt/notes`) and
+> set `VAULT_PATH=/mnt/notes` — a `\\server\share` URL won't work.
+>
+> **Multiple note folders?** The reader accepts a *list* of folders, but the
+> engine can only read what's mounted. Easiest: point `VAULT_PATH` at a **common
+> parent** and add each subfolder (`/vault/work`, `/vault/journal`, …) in the
+> reader. Otherwise add extra bind mounts in `docker-compose.yaml`
+> (`- /host/other:/vault2:ro` under **both** `api` and `worker`) and add
+> `/vault2` in the reader.
 
 ### 4. Get the reader
 
