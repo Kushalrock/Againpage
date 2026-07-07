@@ -280,12 +280,24 @@ config generated at CI time), not by editing the tracked `tauri.conf.json`.
 
 ## 5. Build the installer
 
+> **Prerequisite gate — read this first.** The build command is a thin
+> passthrough to `tauri build`; it does **not** produce the sidecars or the
+> Postgres resources for you. Steps 2–4 above are mandatory and manual. A
+> fresh checkout will fail here because `desktop/src-tauri/binaries/*` holds
+> 80-byte placeholder stubs (`echo "placeholder"; exit 1`) and
+> `desktop/src-tauri/resources/postgres/` is empty (`.gitkeep` only). Run
+> step 2 (build + copy the PyInstaller sidecars with the target-triple
+> suffix) and step 3 (unpack the relocatable Postgres 17 + pgvector set for
+> this platform) before the command below will succeed.
+
 With steps 1–4 complete (engine binaries copied in with the correct
 triple suffix, Postgres resources unpacked for the current platform,
-signing env vars exported):
+signing env vars exported), run either of these equivalent commands:
 
 ```bash
-pnpm --filter desktop tauri build
+pnpm build:desktop                  # root convenience alias
+pnpm --filter desktop tauri build   # what the alias expands to
+pnpm --filter desktop build         # desktop-package alias (also `tauri build`)
 ```
 
 This runs the configured `beforeBuildCommand` (`pnpm --filter reader
