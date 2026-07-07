@@ -36,3 +36,15 @@ async def test_health_pings_each_model():
     p = OpenRouterProvider(api_key="sk-test")
     h = await p.health(models=["anthropic/claude-sonnet-4.6"])
     assert h.ok and h.models["anthropic/claude-sonnet-4.6"] is True
+
+@respx.mock
+async def test_error_surfaces_model_and_body():
+    respx.post("https://openrouter.ai/api/v1/chat/completions").mock(
+        return_value=httpx.Response(400, json={"error": {"message": "not a valid model id"}}))
+    p = OpenRouterProvider(api_key="sk-test")
+    try:
+        await p.summarize("T", "body", model="google/gemini-3.5-flash-lite")
+        assert False, "expected an error"
+    except httpx.HTTPStatusError as e:
+        assert "google/gemini-3.5-flash-lite" in str(e)      # names the offending model
+        assert "not a valid model id" in str(e)              # includes OpenRouter's reason

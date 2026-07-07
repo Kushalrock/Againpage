@@ -6,6 +6,16 @@ from againpage.core.models import NoteDigest, ProviderHealth
 from againpage.generation import prompts
 from againpage.generation.schema import extract_json
 
+
+def _check(res: httpx.Response, model: str) -> None:
+    """Raise with the model name AND OpenRouter's response body — a bare
+    raise_for_status() hides *why* (e.g. an unknown model slug → 400)."""
+    if res.is_error:
+        raise httpx.HTTPStatusError(
+            f"OpenRouter {res.status_code} for model {model!r}: {res.text[:500].strip()}",
+            request=res.request, response=res)
+
+
 class OpenRouterProvider(Provider):
     def __init__(self, api_key: str | None = None, *, base_url: str = "https://openrouter.ai/api/v1",
                  http: httpx.AsyncClient | None = None):
@@ -24,7 +34,7 @@ class OpenRouterProvider(Provider):
                 "model": model,
                 "messages": [{"role": "system", "content": system},
                              {"role": "user", "content": user}]})
-            res.raise_for_status()
+            _check(res, model)
             return res.json()["choices"][0]["message"]["content"]
         finally:
             if self._http is None:
@@ -38,7 +48,7 @@ class OpenRouterProvider(Provider):
         client = self._client()
         try:
             res = await client.post(f"{self.base_url}/embeddings", json={"model": model, "input": text})
-            res.raise_for_status()
+            _check(res, model)
             return res.json()["data"][0]["embedding"]
         finally:
             if self._http is None:
