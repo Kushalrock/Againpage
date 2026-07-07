@@ -16,11 +16,11 @@ function fakePlatform(over: Partial<Platform> = {}): Platform {
     ...over } as Platform
 }
 
-function renderPanel(platform: Platform = fakePlatform()) {
+function renderPanel(platform: Platform = fakePlatform(), settings: Settings = base) {
   const saved: SettingsPatch[] = []
   let reindexed = 0
   render(<PlatformContext.Provider value={platform}>
-    <AiSourcePanel settings={base} onSave={(p) => { saved.push(p) }} onReindex={() => { reindexed += 1 }} />
+    <AiSourcePanel settings={settings} onSave={(p) => { saved.push(p) }} onReindex={() => { reindexed += 1 }} />
   </PlatformContext.Provider>)
   return { saved, reindexed: () => reindexed }
 }
@@ -80,9 +80,17 @@ test('cancelling the confirmation saves nothing', async () => {
   confirm.mockRestore()
 })
 
-test('a stored api key is loaded back into the field on mount', async () => {
-  const platform = fakePlatform({ keyStore: { get: async (k) => (k === 'openrouter' ? 'sk-or-saved' : null),
-    set: async () => {}, remove: async () => {} } })
-  renderPanel(platform)
-  expect(await screen.findByDisplayValue('sk-or-saved')).toBeInTheDocument()
+test('shows a saved indicator when a key already exists (keys are write-only)', () => {
+  renderPanel(fakePlatform(), { ...base, has_openrouter_key: true })
+  expect(screen.getByPlaceholderText(/saved — type to replace/i)).toBeInTheDocument()
+})
+
+test('Save sends a newly typed key in the patch', async () => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  const { saved } = renderPanel()
+  fireEvent.change(screen.getByPlaceholderText(/sk-or-v1/i), { target: { value: 'sk-or-new' } })
+  fireEvent.click(screen.getByText('Save'))
+  await waitFor(() => expect(saved.length).toBe(1))
+  expect(saved[0].openrouter_key).toBe('sk-or-new')
+  confirm.mockRestore()
 })

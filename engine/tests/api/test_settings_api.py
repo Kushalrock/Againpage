@@ -40,10 +40,21 @@ def test_provider_test_uses_health(monkeypatch):
         async def summarize(self,*a,**k): ...
         async def embed(self,*a,**k): ...
         async def generate(self,*a,**k): ...
-    monkeypatch.setattr(routes, "make_provider_for_test", lambda req: FakeProvider())
+    monkeypatch.setattr(routes, "make_provider_for_test", lambda req, **kw: FakeProvider())
     with anyio.from_thread.start_blocking_portal() as portal:
         client, _ = portal.call(_client)
         client.portal = portal
         res = client.post("/provider/test", json={"provider":"openrouter","ollama_endpoint":"",
             "embed_model":"e","summary_model":"s","writer_model":"w"}).json()
         assert res["ok"] is True and res["models"]["w"] is True
+
+def test_provider_keys_are_write_only_with_has_flags():
+    with anyio.from_thread.start_blocking_portal() as portal:
+        client, _ = portal.call(_client)
+        client.portal = portal
+        s0 = client.get("/settings").json()
+        assert s0["has_openrouter_key"] is False and "openrouter_key" not in s0
+        client.put("/settings", json={"openrouter_key": "sk-or-secret"})
+        s1 = client.get("/settings").json()
+        assert s1["has_openrouter_key"] is True          # UI can tell a key is saved
+        assert "openrouter_key" not in s1                # but the raw key is never returned

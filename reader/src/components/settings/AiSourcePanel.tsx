@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { usePlatform } from '../../platform'
 import { color, font } from '../../theme/tokens'
 import { PROVIDER_DEFAULTS } from '../../lib/providerDefaults'
@@ -63,11 +63,12 @@ export function AiSourcePanel({
   // would clobber the user's unsaved edits whenever an unrelated panel's
   // debounced auto-save triggers a settings refetch.
 
-  // Load any stored key back into the field on mount.
-  useEffect(() => {
-    platform.keyStore.get('openrouter').then((k) => { if (k) setOrKey(k) }).catch(() => {})
-    platform.keyStore.get('ollama').then((k) => { if (k) setOllamaKey(k) }).catch(() => {})
-  }, [platform])
+  // Keys are stored write-only in settings (never returned), so we can't read
+  // them back into the field. `settings.has_*_key` tells us one is saved; the
+  // field starts empty and only overwrites the stored key when you type a new one.
+  const savedOr = !!settings.has_openrouter_key
+  const savedOl = !!settings.has_ollama_key
+  const keyPlaceholder = (saved: boolean, hint: string) => (saved ? '•••••••• saved — type to replace' : hint)
 
   const isOR = provider === 'openrouter'
   const isOL = provider === 'ollama'
@@ -109,12 +110,15 @@ export function AiSourcePanel({
 
     setSaving(true)
     try {
-      await platform.keyStore.set('openrouter', orKey).catch(() => {})
-      await platform.keyStore.set('ollama', ollamaKey).catch(() => {})
-      await onSave({
+      const patch: SettingsPatch = {
         provider, ollama_endpoint: endpoint,
         embed_model: models.embed_model, summary_model: models.summary_model, writer_model: models.writer_model,
-      })
+      }
+      // Send keys only when the user typed one — an empty field keeps the stored key.
+      if (orKey.trim()) patch.openrouter_key = orKey.trim()
+      if (ollamaKey.trim()) patch.ollama_key = ollamaKey.trim()
+      await onSave(patch)
+      setOrKey(''); setOllamaKey('')   // clear the inputs; the key is now stored (write-only)
       if (needsReindex) {
         await onReindex()
         setSaveMsg('Saved — re-summarising and re-clustering your vault now.')
@@ -148,7 +152,7 @@ export function AiSourcePanel({
         <div style={{ marginTop: 18 }}>
           <div style={{ fontSize: 13, color: color.muted, marginBottom: 6 }}>OpenRouter API key</div>
           <input value={orKey} onChange={(e) => { setSaveMsg(''); setOrKey(e.target.value) }}
-            placeholder="sk-or-v1-…" style={inputStyle} />
+            placeholder={keyPlaceholder(savedOr, 'sk-or-v1-…')} style={inputStyle} />
         </div>
       )}
       {isOL && (
@@ -165,7 +169,7 @@ export function AiSourcePanel({
             <div style={{ fontSize: 13, color: color.muted, marginBottom: 6 }}>
               API key <span style={{ color: color.faint }}>(optional · only if your endpoint requires one)</span>
             </div>
-            <input value={ollamaKey} onChange={(e) => { setSaveMsg(''); setOllamaKey(e.target.value) }} placeholder="—" style={inputStyle} />
+            <input value={ollamaKey} onChange={(e) => { setSaveMsg(''); setOllamaKey(e.target.value) }} placeholder={keyPlaceholder(savedOl, "—")} style={inputStyle} />
           </div>
         </div>
       )}
@@ -173,7 +177,7 @@ export function AiSourcePanel({
         <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
             <div style={{ fontSize: 13, color: color.muted, marginBottom: 6 }}>OpenRouter API key</div>
-            <input value={orKey} onChange={(e) => { setSaveMsg(''); setOrKey(e.target.value) }} placeholder="sk-or-v1-…" style={inputStyle} />
+            <input value={orKey} onChange={(e) => { setSaveMsg(''); setOrKey(e.target.value) }} placeholder={keyPlaceholder(savedOr, 'sk-or-v1-…')} style={inputStyle} />
           </div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 200 }}>
@@ -183,7 +187,7 @@ export function AiSourcePanel({
             </div>
             <div style={{ flex: 1, minWidth: 160 }}>
               <div style={{ fontSize: 13, color: color.muted, marginBottom: 6 }}>Ollama API key</div>
-              <input value={ollamaKey} onChange={(e) => { setSaveMsg(''); setOllamaKey(e.target.value) }} placeholder="—" style={inputStyle} />
+              <input value={ollamaKey} onChange={(e) => { setSaveMsg(''); setOllamaKey(e.target.value) }} placeholder={keyPlaceholder(savedOl, "—")} style={inputStyle} />
             </div>
           </div>
           <div style={{ fontSize: 13, color: color.faint, fontStyle: 'italic', lineHeight: 1.5 }}>

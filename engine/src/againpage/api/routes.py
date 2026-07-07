@@ -10,12 +10,13 @@ from againpage.queue.queue import Queue
 from againpage.providers.factory import make_provider
 from againpage.vault.scan import scan_vaults
 
-def make_provider_for_test(req: ProviderTestRequest):
-    # keys come from env; a SettingsRow-lite is enough for the factory
+def make_provider_for_test(req: ProviderTestRequest, *, openrouter_key=None, ollama_key=None):
+    # Use the saved keys (entered via the UI); a SettingsRow-lite carries the rest.
     return make_provider(SettingsRow(user_id=None, vault_paths=[], excluded_paths=[],
         profile_text=None, cadence_days=1, delivery_time=None, reading_min=5, notes_per_issue=3,
         provider=req.provider, ollama_endpoint=req.ollama_endpoint,
-        embed_model=req.embed_model, summary_model=req.summary_model, writer_model=req.writer_model))
+        embed_model=req.embed_model, summary_model=req.summary_model, writer_model=req.writer_model,
+        openrouter_key=openrouter_key, ollama_key=ollama_key))
 
 def _settings_response(s, count: int) -> SettingsResponse:
     return SettingsResponse(vault_paths=s.vault_paths, excluded_paths=s.excluded_paths,
@@ -24,7 +25,8 @@ def _settings_response(s, count: int) -> SettingsResponse:
         reading_min=s.reading_min, notes_per_issue=s.notes_per_issue, provider=s.provider,
         ollama_endpoint=s.ollama_endpoint, embed_model=s.embed_model or "",
         summary_model=s.summary_model or "", writer_model=s.writer_model or "",
-        vault_note_count=count)
+        vault_note_count=count,
+        has_openrouter_key=bool(s.openrouter_key), has_ollama_key=bool(s.ollama_key))
 
 def _count(s) -> int:
     if not s.vault_paths:
@@ -104,7 +106,9 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
 
     @r.post("/provider/test")
     async def provider_test(req: ProviderTestRequest):
-        provider = make_provider_for_test(req)
+        s = await repo.get_settings(await repo.ensure_local_user())
+        provider = make_provider_for_test(req, openrouter_key=(s.openrouter_key if s else None),
+                                          ollama_key=(s.ollama_key if s else None))
         models = sorted({m for m in [req.embed_model, req.summary_model, req.writer_model] if m})
         h = await provider.health(models=models)
         return ProviderTestResult(ok=h.ok, reachable=h.reachable, models=h.models, detail=h.detail)

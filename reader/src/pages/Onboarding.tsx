@@ -3,6 +3,7 @@ import { useSaveSettings } from '../api/queries'
 import { usePlatform } from '../platform'
 import { lengthLabel } from '../lib/readingLength'
 import { PROVIDER_DEFAULTS } from '../lib/providerDefaults'
+import { Logo } from '../components/Logo'
 import { color, font } from '../theme/tokens'
 import type { Provider, SettingsPatch } from '../types/settings'
 
@@ -75,9 +76,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   function removeFolder(path: string) { setFolders(folders.filter((f) => f.path !== path)) }
 
   async function finish() {
-    if (aiSource && apiKey) {
-      await platform.keyStore.set(aiSource, apiKey)
-    }
     const provider = aiSource || 'openrouter'
     const patch: SettingsPatch = {
       vault_paths: folders.map((f) => f.path),
@@ -88,6 +86,11 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       notes_per_issue: notesPerIssue,
       delivery_time: deliveryTime,
       profile_text: profileText,
+    }
+    // The key is stored with settings (reaches the engine; no .env needed).
+    if (apiKey.trim()) {
+      if (provider === 'ollama') patch.ollama_key = apiKey.trim()
+      else patch.openrouter_key = apiKey.trim()
     }
     await save.mutateAsync(patch)
     setStep(5)
@@ -119,7 +122,10 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', background: color.paper }}>
       <div style={{ width: '100%', maxWidth: 560 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
-          <div style={{ fontFamily: font.display, fontWeight: 600, fontSize: 22, color: color.inkStrong }}>AgainPage</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Logo size={28} />
+            <div style={{ fontFamily: font.display, fontWeight: 600, fontSize: 22, color: color.inkStrong }}>Againpage</div>
+          </div>
           <div style={labelStyle}>{stepLabel}</div>
         </div>
 
@@ -130,7 +136,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 A paper, from your<br />own mind.
               </h1>
               <p style={{ fontSize: 18, lineHeight: 1.6, color: color.muted, maxWidth: 420, margin: '22px auto 0' }}>
-                Three calm choices and AgainPage will start composing a daily edition from the notes you already keep. It takes about a minute.
+                Three calm choices and Againpage will start composing a daily edition from the notes you already keep. It takes about a minute.
               </p>
             </div>
           )}
@@ -138,7 +144,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           {step === 1 && (
             <div>
               <h2 style={{ fontFamily: font.display, fontWeight: 600, fontSize: 30, color: color.inkStrong, letterSpacing: '-.01em' }}>
-                Point AgainPage at your notes.
+                Point Againpage at your notes.
               </h2>
               <p style={{ fontSize: 16, lineHeight: 1.6, color: color.muted, marginTop: 10 }}>
                 Choose the folder of markdown files it should read. This is the only thing you grant access to — and it never leaves your machine.
@@ -201,7 +207,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 Bring your own AI.
               </h2>
               <p style={{ fontSize: 16, lineHeight: 1.6, color: color.muted, marginTop: 10 }}>
-                AgainPage uses a model you control. Pick the path that fits — you can change it later, and mix models per step if you ever want to.
+                Againpage uses a model you control. Pick the path that fits — you can change it later, and mix models per step if you ever want to.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 22 }}>
                 <button type="button" onClick={() => setAiSource('openrouter')} style={cardStyle(aiSource === 'openrouter')}>

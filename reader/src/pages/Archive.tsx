@@ -42,7 +42,7 @@ export function Archive({ onOpen, onNavigate }: { onOpen: (id: string) => void; 
           The Archive
         </h1>
         <p style={{ fontStyle: 'italic', color: color.muted, fontSize: 17, marginTop: 14 }}>
-          Every edition AgainPage has composed for you. Forty-seven mornings, and counting.
+          Every edition Againpage has composed for you. Forty-seven mornings, and counting.
         </p>
       </header>
       {groups.map((g) => (

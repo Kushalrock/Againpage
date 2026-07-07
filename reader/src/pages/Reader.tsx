@@ -70,7 +70,7 @@ export function Reader({ issueId, onNavigate }: { issueId?: string | null; onNav
         <h1 style={{ fontFamily: font.display, fontWeight: 500, fontSize: 'clamp(32px,5vw,52px)', color: color.inkStrong, lineHeight: 1.08 }}>
           Your themes haven't been composed yet.</h1>
         <p style={{ fontSize: 18, lineHeight: 1.6, color: color.muted, marginTop: 20 }}>
-          Point AgainPage at your notes and re-index them, and it will compose the themes your daily edition is built from.</p>
+          Point Againpage at your notes and re-index them, and it will compose the themes your daily edition is built from.</p>
         <button type="button" onClick={() => onNavigate?.('settings')}
           style={{ marginTop: 28, background: color.dark, color: color.paper, border: `1px solid ${color.dark}`,
             borderRadius: 6, padding: '14px 28px', fontSize: 16, cursor: 'pointer', fontFamily: font.body }}>

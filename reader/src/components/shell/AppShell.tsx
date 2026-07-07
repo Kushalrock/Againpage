@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { color, font } from '../../theme/tokens'
 import { useSettings } from '../../api/queries'
+import { Logo } from '../Logo'
 
 export type Screen = 'reader' | 'archive' | 'settings'
 
@@ -37,8 +38,11 @@ export function AppShell({
         }}
       >
         <div style={{ padding: '0 26px 26px', borderBottom: `1px solid ${color.darkRule}` }}>
-          <div style={{ fontFamily: font.display, fontWeight: 600, fontSize: 24, color: color.paper }}>
-            AgainPage
+          <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
+            <Logo size={30} />
+            <div style={{ fontFamily: font.display, fontWeight: 600, fontSize: 24, color: color.paper }}>
+              Againpage
+            </div>
           </div>
           <div
             style={{

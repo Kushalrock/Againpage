@@ -41,7 +41,7 @@ export function NotesFolderPanel({
         Notes folders
       </div>
       <p style={{ fontSize: 14, lineHeight: 1.55, color: color.muted, marginTop: 6 }}>
-        The folders AgainPage reads from. Add as many as you like.
+        The folders Againpage reads from. Add as many as you like.
       </p>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>

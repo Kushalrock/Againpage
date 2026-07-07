@@ -22,3 +22,12 @@ def test_custom_routes_by_prefix():
     assert r._route("openrouter/openai/gpt-5")[1] == "openai/gpt-5"
     assert isinstance(r._route("ollama/qwen3:8b")[0], OllamaProvider)
     assert r._route("ollama/qwen3:8b")[1] == "qwen3:8b"
+
+def test_provider_uses_keys_from_settings():
+    import dataclasses
+    from againpage.providers.factory import make_provider
+    s = dataclasses.replace(_settings("openrouter"), openrouter_key="sk-or-fromdb")
+    p = make_provider(s)
+    assert p.api_key == "sk-or-fromdb"                 # UI-entered key reaches the provider
+    c = make_provider(dataclasses.replace(_settings("custom"), openrouter_key="sk-or-x", ollama_key="ol-y"))
+    assert c.openrouter.api_key == "sk-or-x" and c.ollama.api_key == "ol-y"

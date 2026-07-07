@@ -37,8 +37,13 @@ class RoutingProvider(Provider):
         return ProviderHealth(ok=bool(models) and all(merged.values()), reachable=reachable, models=merged)
 
 def make_provider(settings: SettingsRow) -> Provider:
+    # Keys come from settings (entered via the UI); each provider falls back to
+    # its env var when the settings key is empty.
+    or_key = settings.openrouter_key or None
+    ol_key = settings.ollama_key or None
     if settings.provider == "ollama":
-        return OllamaProvider(settings.ollama_endpoint)
+        return OllamaProvider(settings.ollama_endpoint, api_key=ol_key)
     if settings.provider == "custom":
-        return RoutingProvider(OpenRouterProvider(), OllamaProvider(settings.ollama_endpoint))
-    return OpenRouterProvider()
+        return RoutingProvider(OpenRouterProvider(or_key),
+                               OllamaProvider(settings.ollama_endpoint, api_key=ol_key))
+    return OpenRouterProvider(or_key)

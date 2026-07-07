@@ -58,6 +58,8 @@ class SettingsRow:
     embed_model: str | None
     summary_model: str | None
     writer_model: str | None
+    openrouter_key: str | None = None
+    ollama_key: str | None = None
 
 @dataclass
 class IssueRow:

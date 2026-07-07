@@ -40,6 +40,8 @@ class SettingsResponse(BaseModel):
     summary_model: str
     writer_model: str
     vault_note_count: int
+    has_openrouter_key: bool = False   # keys are write-only; expose only whether one is saved
+    has_ollama_key: bool = False
 
 class ProviderTestRequest(BaseModel):
     provider: str
