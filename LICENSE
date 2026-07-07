@@ -1,0 +1,181 @@
+# Functional Source License, Version 1.1, Apache 2.0 Future License
+
+## Abbreviation
+
+FSL-1.1-ALv2
+
+## Notice
+
+Copyright © 2026 Kushal Agrawal and the Againpage contributors
+
+---
+
+## Plain-language summary (informative, not part of the license)
+
+> This summary is provided for convenience only. If it conflicts with the
+> Terms and Conditions below, the Terms and Conditions govern.
+
+Againpage is **source-available**, not (yet) open source. In short:
+
+- **You may** read the source, run it, modify it, self-host it for your own
+  use, use it for non-commercial research or education, and build on it —
+  for any purpose **except competing with Againpage**.
+- **You may not**, before the Change Date, offer Againpage (or a substantially
+  similar substitute built from it) to third parties as a commercial product
+  or service that competes with it.
+- **On the Change Date — 1 January 2029 — this software automatically becomes
+  available to you under the Apache License, Version 2.0**, a permissive open
+  source license, with no further restriction. That grant is irrevocable: it
+  applies to every version released under this license, including versions
+  released before that date.
+
+The intent is simple: keep the code open to inspect, learn from, and use, while
+reserving commercial-competitor rights for a defined period, after which the
+software becomes fully open source.
+
+---
+
+## License parameters
+
+| Parameter          | Value                                              |
+| ------------------ | -------------------------------------------------- |
+| **Licensor**       | Kushal Agrawal and the Againpage contributors      |
+| **Software**       | Againpage, and each version we make available under these Terms and Conditions |
+| **Current license**| Functional Source License 1.1 (source-available)   |
+| **Change Date**    | **1 January 2029**                                 |
+| **Future License** | Apache License, Version 2.0 (`Apache-2.0`)         |
+
+---
+
+## Terms and Conditions
+
+### Licensor ("We")
+
+The party offering the Software under these Terms and Conditions, as identified
+as **Licensor** in the License parameters above.
+
+### The Software
+
+The "Software" is each version of the software that we make available under
+these Terms and Conditions, as indicated by our inclusion of these Terms and
+Conditions with the Software.
+
+### License Grant
+
+Subject to your compliance with this License Grant and the Patents,
+Redistribution and Trademark clauses below, we hereby grant you the right to
+use, copy, modify, create derivative works, publicly perform, publicly display
+and redistribute the Software for any Permitted Purpose identified below.
+
+### Permitted Purpose
+
+A Permitted Purpose is any purpose other than a Competing Use. A Competing Use
+means making the Software available to others in a commercial product or
+service that:
+
+1. substitutes for the Software;
+
+2. substitutes for any other product or service we offer using the Software
+   that exists as of the date we make the Software available; or
+
+3. offers the same or substantially similar functionality as the Software.
+
+A Competing Use explicitly does not include making the Software available for
+any of the Permitted Purposes below, or using the Software to develop a product
+or service that is not a Competing Use.
+
+Permitted Purposes specifically include using the Software:
+
+1. for your internal use and access;
+
+2. for non-commercial education;
+
+3. for non-commercial research; and
+
+4. in connection with professional services that you provide to a licensee
+   using the Software in accordance with these Terms and Conditions.
+
+### Patents
+
+To the extent your use for a Permitted Purpose would necessarily infringe our
+patents, the license grant above includes a license under our patents. If you
+make a claim against any party that the Software infringes or contributes to
+the infringement of any patent, then your patent license to the Software ends
+immediately.
+
+### Redistribution
+
+The Terms and Conditions apply to all copies, modifications and derivatives of
+the Software.
+
+If you redistribute any copies, modifications or derivatives of the Software,
+you must include a copy of or a link to these Terms and Conditions and not
+remove any copyright notices provided in or with the Software.
+
+### Disclaimer
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, TITLE OR NON-INFRINGEMENT.
+
+IN NO EVENT WILL WE HAVE ANY LIABILITY TO YOU ARISING OUT OF OR RELATED TO THE
+SOFTWARE, INCLUDING INDIRECT, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES,
+EVEN IF WE HAVE BEEN INFORMED OF THEIR POSSIBILITY IN ADVANCE.
+
+### Trademarks
+
+Except for displaying the License Details and identifying us as the origin of
+the Software, you have no right under these Terms and Conditions to use our
+trademarks, trade names, service marks or product names.
+
+## Grant of Future License
+
+We hereby irrevocably grant you an additional license to use the Software under
+the Apache License, Version 2.0 (the "Future License") that becomes effective on
+the **Change Date: 1 January 2029**.
+
+This grant is unconditional and irrevocable. It applies to every version of the
+Software we have made available under these Terms and Conditions, including any
+version first made available before the Change Date. In other words, no version
+of the Software is ever "held back": every version becomes Apache-2.0 licensed
+on the Change Date at the latest.
+
+On or after the Change Date, you may — at your option — use, copy, modify,
+create derivative works of, and redistribute the Software (that version and all
+earlier versions) solely under the terms of the Apache License, Version 2.0,
+and the restrictions in these Terms and Conditions (including the Competing Use
+restriction) no longer apply to your use under that license.
+
+### What this means in practice
+
+- **Before 1 January 2029:** your rights are governed by the Terms and
+  Conditions above — free to use, modify, self-host and build on for any
+  Permitted Purpose; the only carve-out is a Competing Use.
+- **On or after 1 January 2029:** the same code is available to you under the
+  Apache License, Version 2.0, with no Competing Use restriction. You may treat
+  it as fully open source from that date forward.
+
+### Obtaining the Future License text
+
+The Apache License, Version 2.0 is a standard, widely used open source license.
+Its full, authoritative text is available at:
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Its SPDX identifier is `Apache-2.0`. When you use the Software under the Future
+License on or after the Change Date, comply with the Apache License, Version 2.0
+as published at that URL, including its notice and attribution requirements.
+
+---
+
+## Notices
+
+Make sure that anyone who gets a copy of any part of the Software from you also
+gets a copy of these Terms and Conditions.
+
+If you modify the Software, you may add your own copyright notice to your
+modifications and provide notice that you have modified the Software.
+
+This license does not grant you any right in any trademark or logo of Licensor
+or its affiliates (provided that you may use a trademark or logo of Licensor as
+expressly required by the Redistribution and Trademarks clauses above).
