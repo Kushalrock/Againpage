@@ -11,7 +11,10 @@
     "build:desktop": "pnpm --filter desktop tauri build",
     "stack:up": "docker compose up --build -d",
     "stack:down": "docker compose down",
-    "stack:logs": "docker compose logs -f"
+    "stack:logs": "docker compose logs -f",
+    "engine:up": "docker compose up --build -d db api worker",
+    "engine:logs": "docker compose logs -f api worker",
+    "engine:down": "docker compose down"
   },
   "keywords": [],
   "author": "",

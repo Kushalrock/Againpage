@@ -121,8 +121,8 @@ reachable by the server, not by your laptop. Then bring up just the database,
 API, and worker:
 
 ```bash
-VAULT_PATH="/mnt/notes" OPENROUTER_API_KEY="sk-or-..." \
-  docker compose up --build -d db api worker
+VAULT_PATH="/mnt/notes" OPENROUTER_API_KEY="sk-or-..." pnpm engine:up
+#   ≡ docker compose up --build -d db api worker   (no reader container)
 ```
 
 The API listens on `0.0.0.0:8000` — reachable from other machines on your
@@ -130,15 +130,22 @@ network as `http://SERVER_IP:8000`.
 
 **On your machine — run only the reader, pointed at the server:**
 
-```bash
-pnpm install
-VITE_API_BASE="http://SERVER_IP:8000" pnpm --filter reader dev
-# then open http://localhost:5173
-```
+You have two ways to tell the reader where the engine lives:
 
-`VITE_API_BASE` tells the reader where the engine is (it defaults to
-`localhost:8000`). You can also bake it into a static reader build with the same
-variable and serve the built files anywhere.
+- **Simplest — in the UI.** Open the reader and, in onboarding, set the
+  **Engine URL** field (under the welcome step) to `http://SERVER_IP:8000`. It's
+  saved in your browser; no rebuild or env var needed.
+- **Or via env** when running/building the reader yourself:
+
+  ```bash
+  pnpm install
+  VITE_API_BASE="http://SERVER_IP:8000" pnpm --filter reader dev   # open http://localhost:5173
+  ```
+
+**Note on the notes folder:** in onboarding, type the path **as the engine sees
+it** (e.g. `/mnt/notes` or `/vault`), not a path on your laptop — the reader
+never reads files, the engine does. A local-only path yields 0 notes because the
+remote engine can't see it.
 
 > **⚠️ Security.** The engine API has **no authentication** (Againpage is
 > single-user) and allows all origins. Only expose it on a **trusted LAN** or
