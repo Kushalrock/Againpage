@@ -17,7 +17,10 @@ def extract_json(text: str) -> dict:
         if start >= 0 and end > start:
             candidate = candidate[start:end + 1]
     try:
-        return json.loads(candidate)
+        # strict=False tolerates raw control characters (newlines, tabs, …)
+        # inside string values — writer models routinely emit a multi-line
+        # markdown body without escaping them, which strict JSON forbids.
+        return json.loads(candidate, strict=False)
     except json.JSONDecodeError as e:
         raise IssueValidationError([{"type": "json_decode", "msg": str(e)}]) from e
 

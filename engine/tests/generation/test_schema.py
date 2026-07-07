@@ -26,3 +26,10 @@ def test_extract_json_handles_nested_objects():
 def test_extract_json_raises_on_garbage():
     with pytest.raises(IssueValidationError):
         extract_json("not json at all")
+
+def test_extract_json_allows_literal_control_chars_in_strings():
+    # Writer models routinely emit a multi-line markdown body as a JSON string
+    # with RAW newlines/tabs inside it. Strict json.loads rejects those
+    # ("Invalid control character"); we accept them and keep them verbatim.
+    txt = '{"lead": "# Heading\n\nA paragraph\twith a tab.", "title": "T"}'
+    assert extract_json(txt) == {"lead": "# Heading\n\nA paragraph\twith a tab.", "title": "T"}
