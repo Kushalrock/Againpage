@@ -55,3 +55,48 @@ async def test_new_dimension_accepts_matching_vectors_afterward():
     note = await repo.upsert_note(NewNote(user_id=uid, vault_path="b.md", title="B", content_hash="h2",
         substantive=True, summary="s", tags=["t"], embedding=[0.2] * 1536))
     assert note.vault_path == "b.md"
+
+
+async def _index_def(repo) -> str | None:
+    """indexdef of the notes.embedding HNSW index, or None if there is none."""
+    async with repo.pool.connection() as conn:
+        cur = await conn.execute(
+            "SELECT indexdef FROM pg_indexes WHERE indexname = 'idx_notes_embedding'")
+        row = await cur.fetchone()
+    return row[0] if row else None
+
+
+async def test_dimension_above_2000_uses_a_halfvec_hnsw_index():
+    """pgvector caps a plain `vector` HNSW index at 2000 dims. A 3072-dim model
+    (e.g. text-embedding-3-large) must migrate cleanly — before the fix this
+    raised ProgramLimitExceeded ('cannot have more than 2000 dimensions')."""
+    repo = await _repo()
+    assert await repo.ensure_embedding_dim(3072) is True
+    assert await repo.embedding_dim() == 3072
+    definition = await _index_def(repo)
+    assert definition is not None                          # an ANN index still exists
+    assert "halfvec" in definition.lower()                 # built on the half-precision cast
+
+
+async def test_high_dimension_nearest_notes_runs_and_ranks():
+    """With a >2000-dim halfvec index, nearest_notes must cast the query to the
+    same halfvec type — otherwise it either errors or silently skips the index."""
+    repo = await _repo()
+    uid = await repo.ensure_local_user()
+    await repo.ensure_embedding_dim(3072)
+    await repo.upsert_note(NewNote(user_id=uid, vault_path="near.md", title="Near", content_hash="h1",
+        substantive=True, summary="s", tags=["t"], embedding=[0.9] + [0.0] * 3071))
+    await repo.upsert_note(NewNote(user_id=uid, vault_path="far.md", title="Far", content_hash="h2",
+        substantive=True, summary="s", tags=["t"], embedding=[0.0] * 3071 + [0.9]))
+    hits = await repo.nearest_notes([1.0] + [0.0] * 3071, limit=1, exclude=set())
+    assert [h.title for h in hits] == ["Near"]             # closest by cosine, query ran without error
+
+
+async def test_dimension_beyond_halfvec_limit_skips_index_without_crashing():
+    """Above 4000 dims even a halfvec HNSW index is impossible. We must still
+    migrate the column (vectors store up to 16000 dims) and simply skip the
+    ANN index rather than crash — lookups fall back to a sequential scan."""
+    repo = await _repo()
+    assert await repo.ensure_embedding_dim(5000) is True
+    assert await repo.embedding_dim() == 5000
+    assert await _index_def(repo) is None                  # no HNSW index, no crash

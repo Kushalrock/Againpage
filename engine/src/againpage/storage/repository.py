@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import logging
 from datetime import date, time
 from uuid import UUID
 from psycopg.rows import dict_row
@@ -8,12 +9,67 @@ from againpage.core.models import (SettingsRow, IssueRow, NewIssue,
     NewNote, NoteRow, LinkEdge, NoteNeighbor, ThemeRow, ClusterInput,
     SelectionContext, ThemeCtx, LinkCtx, IssueNote)
 
+log = logging.getLogger(__name__)
+
 _SETTINGS_COLS = ("user_id","vault_paths","excluded_paths","profile_text","cadence_days",
     "delivery_time","reading_min","notes_per_issue","provider","ollama_endpoint",
     "embed_model","summary_model","writer_model","openrouter_key","ollama_key")
 
 # Advisory-lock key serialising the embedding-dimension DDL across processes.
 _EMBED_DIM_LOCK = 0x41474E50  # "AGNP"
+
+# pgvector HNSW dimension ceilings. A `vector` HNSW index is capped at 2000
+# dims; the half-precision `halfvec` type lifts that to 4000. Beyond 4000 no
+# HNSW index is possible (the `vector` column itself still stores up to 16000).
+_HNSW_MAX_DIM = 2000
+_HALFVEC_MAX_DIM = 4000
+
+
+def _embedding_index_ddl(dim: int) -> str | None:
+    """The ``CREATE INDEX`` for notes.embedding at ``dim`` dims, or None when no
+    HNSW index can be built. At/below 2000 dims we index the ``vector`` column
+    directly; above that we index its half-precision (``halfvec``) cast, which
+    pgvector supports up to 4000 dims. Callers must skip index creation when this
+    returns None. ``dim`` is an int interpolated into DDL (pgvector's type
+    modifier cannot be a bind parameter)."""
+    if dim <= _HNSW_MAX_DIM:
+        return "CREATE INDEX idx_notes_embedding ON notes USING hnsw (embedding vector_cosine_ops)"
+    if dim <= _HALFVEC_MAX_DIM:
+        return (f"CREATE INDEX idx_notes_embedding ON notes "
+                f"USING hnsw ((embedding::halfvec({dim})) halfvec_cosine_ops)")
+    return None
+
+
+async def _create_embedding_index(conn, dim: int) -> None:
+    """Create the notes.embedding HNSW index appropriate for ``dim``, logging a
+    clear message for the half-precision and no-index cases so an operator who
+    picked a high-dimensional embedding model understands what happened."""
+    ddl = _embedding_index_ddl(dim)
+    if ddl is None:
+        log.warning(
+            "notes.embedding is %d-dim, above pgvector's %d-dim HNSW limit even "
+            "for halfvec; skipping the ANN index. Nearest-note lookups will run "
+            "a sequential scan — pick an embedding model of ≤4000 dims for "
+            "an index.", dim, _HALFVEC_MAX_DIM)
+        return
+    await conn.execute(ddl)
+    if dim > _HNSW_MAX_DIM:
+        log.info(
+            "notes.embedding is %d-dim, above pgvector's %d-dim `vector` HNSW "
+            "limit; using a half-precision (halfvec) HNSW index instead.",
+            dim, _HNSW_MAX_DIM)
+
+
+def _embedding_distance_expr(dim: int) -> str:
+    """The ``embedding <=> <param>`` cosine-distance SQL for a query of ``dim``
+    dims, matching the index built by :func:`_embedding_index_ddl` so the planner
+    can actually use it. Above 2000 dims the index is on the halfvec cast, so the
+    query must cast both the column and the parameter to the same halfvec type
+    (via ``::vector::halfvec`` so it works whether or not a pgvector adapter is
+    registered on the connection)."""
+    if _HNSW_MAX_DIM < dim <= _HALFVEC_MAX_DIM:
+        return f"embedding::halfvec({dim}) <=> %s::vector::halfvec({dim})"
+    return "embedding <=> %s::vector"
 
 def _settings_row(d: dict) -> SettingsRow:
     return SettingsRow(**{k: d[k] for k in _SETTINGS_COLS})
@@ -192,15 +248,18 @@ class Repository:
                     (src_note_id, dst["id"]))
 
     async def nearest_notes(self, embedding, *, limit, exclude):
+        # Distance expression must match the HNSW index built for this dimension
+        # (halfvec cast above 2000 dims) or the planner falls back to a scan.
+        dist = _embedding_distance_expr(len(embedding))
         async with self.pool.connection() as conn:
             conn.row_factory = dict_row
             cur = await conn.execute(
-                """SELECT id, vault_path, title, summary,
-                          1 - (embedding <=> %s::vector) AS similarity
+                f"""SELECT id, vault_path, title, summary,
+                          1 - ({dist}) AS similarity
                    FROM notes
                    WHERE active AND substantive AND embedding IS NOT NULL
                          AND NOT (id = ANY(%s))
-                   ORDER BY embedding <=> %s::vector LIMIT %s""",
+                   ORDER BY {dist} LIMIT %s""",
                 (embedding, list(exclude), embedding, limit))
             return [NoteNeighbor(note_id=r["id"], vault_path=r["vault_path"], title=r["title"],
                                  summary=r["summary"], similarity=float(r["similarity"]))
@@ -252,8 +311,7 @@ class Repository:
                     await conn.execute("DROP INDEX IF EXISTS idx_notes_embedding")
                     await conn.execute(f"ALTER TABLE notes ALTER COLUMN embedding TYPE vector({dim}) USING NULL")
                     await conn.execute(f"ALTER TABLE themes ALTER COLUMN centroid TYPE vector({dim}) USING NULL")
-                    await conn.execute(
-                        "CREATE INDEX idx_notes_embedding ON notes USING hnsw (embedding vector_cosine_ops)")
+                    await _create_embedding_index(conn, dim)
                 path_to_id: dict[str, UUID] = {}
                 for n in staged:
                     c = await conn.execute(
@@ -335,8 +393,7 @@ class Repository:
                 await conn.execute("DELETE FROM note_themes")
                 await conn.execute("DELETE FROM themes")
                 await conn.execute(f"ALTER TABLE themes ALTER COLUMN centroid TYPE vector({dim}) USING NULL")
-                await conn.execute(
-                    "CREATE INDEX idx_notes_embedding ON notes USING hnsw (embedding vector_cosine_ops)")
+                await _create_embedding_index(conn, dim)
                 # Force every note to re-embed on the next ingest (the content
                 # hash gate would otherwise skip unchanged files).
                 await conn.execute("UPDATE notes SET content_hash = ''")
