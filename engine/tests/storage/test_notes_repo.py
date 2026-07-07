@@ -37,3 +37,17 @@ async def test_nearest_and_links():
     await repo.replace_links(near.id, [LinkEdge(dst_vault_path="far.md")])
     res = await repo.nearest_notes(q, limit=1, exclude=set())
     assert res[0].vault_path == "near.md" and res[0].similarity > 0.9
+
+
+async def _titled(repo, uid, path, title):
+    from againpage.core.models import NewNote
+    return await repo.upsert_note(NewNote(user_id=uid, vault_path=path, title=title,
+        content_hash="h", substantive=True, summary="s", tags=["t"], embedding=[0.1] * 768))
+
+async def test_note_by_title_matches_across_markdown_and_case():
+    repo = await _repo(); uid = await repo.ensure_local_user()
+    await _titled(repo, uid, "german.md", "**The Engineers' Republic**")   # bold H1, as stored
+    assert (await repo.note_by_title(uid, "**The Engineers' Republic**")).vault_path == "german.md"  # exact
+    assert (await repo.note_by_title(uid, "The Engineers' Republic")).vault_path == "german.md"       # edition's clean text
+    assert (await repo.note_by_title(uid, "the engineers' republic")).vault_path == "german.md"       # case-insensitive
+    assert await repo.note_by_title(uid, "A Genuinely Absent Note") is None                           # truly missing → None

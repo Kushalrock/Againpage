@@ -209,13 +209,26 @@ class Repository:
 
     async def note_by_title(self, user_id, title):
         """Most-recently-updated active note with this title — used to expand a
-        note the reader clicked in an edition (editions reference notes by title)."""
+        note the reader clicked in an edition (editions reference notes by title).
+
+        Tries an exact match first, then falls back to a format-insensitive one:
+        an edition references a note by its markdown-cleaned title, which can
+        differ from the stored title by emphasis markers, case, or surrounding
+        whitespace (e.g. stored ``**The Engineers' Republic**`` vs referenced
+        ``The Engineers' Republic``). Returns None if nothing matches at all."""
         async with self.pool.connection() as conn:
             conn.row_factory = dict_row
             cur = await conn.execute(
                 "SELECT * FROM notes WHERE user_id=%s AND title=%s AND active "
                 "ORDER BY updated_at DESC LIMIT 1", (user_id, title))
             row = await cur.fetchone()
+            if row is None:
+                cur = await conn.execute(
+                    "SELECT * FROM notes WHERE user_id=%s AND active "
+                    "AND lower(btrim(regexp_replace(title, '[*_`]', '', 'g'))) "
+                    "  = lower(btrim(regexp_replace(%s, '[*_`]', '', 'g'))) "
+                    "ORDER BY updated_at DESC LIMIT 1", (user_id, title))
+                row = await cur.fetchone()
             return _note_row(row) if row else None
 
     async def active_notes(self, user_id):
