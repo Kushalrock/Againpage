@@ -146,7 +146,10 @@ server** (required — otherwise every screen fails to load):
 1. Set the **Engine URL** to `http://SERVER_IP:8000` — in onboarding (welcome
    step) or later in **Settings → Engine connection**.
 2. Set the notes folder to `/vault/<folder-name>` — the path on the **server**,
-   as mounted (again, type it; don't use the picker).
+   as mounted (again, type it; don't use the picker). *If you run the engine
+   **natively** on the server (dev tools, no Docker), there's no mount — use the
+   real path like `/mnt/notes/vault1`; the `/vault/...` prefix only exists
+   because of the Docker mount.*
 3. AI source → index → read, as above.
 
 > **⚠️ Security.** The engine API is **unauthenticated** and single-user. Keep it
