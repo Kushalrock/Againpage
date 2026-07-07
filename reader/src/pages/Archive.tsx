@@ -1,5 +1,6 @@
 import { useArchive, useStatus } from '../api/queries'
 import { color, font } from '../theme/tokens'
+import { spellOutCount } from '../lib/masthead'
 
 export function Archive({ onOpen, onNavigate }: { onOpen: (id: string) => void; onNavigate?: (screen: string) => void }) {
   const status = useStatus()
@@ -42,7 +43,8 @@ export function Archive({ onOpen, onNavigate }: { onOpen: (id: string) => void; 
           The Archive
         </h1>
         <p style={{ fontStyle: 'italic', color: color.muted, fontSize: 17, marginTop: 14 }}>
-          Every edition Againpage has composed for you. Forty-seven mornings, and counting.
+          Every edition Againpage has composed for you. {spellOutCount(archive.data?.total ?? 0)}{' '}
+          {(archive.data?.total ?? 0) === 1 ? 'morning' : 'mornings'}, and counting.
         </p>
       </header>
       {groups.map((g) => (

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { color, font } from '../../theme/tokens'
-import { useSettings } from '../../api/queries'
+import { useSettings, useStatus } from '../../api/queries'
+import { volumeLabel } from '../../lib/masthead'
 import { Logo } from '../Logo'
 
 export type Screen = 'reader' | 'archive' | 'settings'
@@ -21,7 +22,9 @@ export function AppShell({
   children: ReactNode
 }) {
   const { data: settings } = useSettings()
+  const { data: status } = useStatus()
   const folders = settings?.vault_paths ?? []
+  const latestNo = status?.issue_count ?? 0   // editions published so far → current No.
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <aside
@@ -44,18 +47,20 @@ export function AppShell({
               Againpage
             </div>
           </div>
-          <div
-            style={{
-              fontSize: 11,
-              letterSpacing: '.14em',
-              textTransform: 'uppercase',
-              color: color.fainter,
-              marginTop: 4,
-              fontWeight: 600,
-            }}
-          >
-            Vol. II · No. 47
-          </div>
+          {latestNo > 0 && (
+            <div
+              style={{
+                fontSize: 11,
+                letterSpacing: '.14em',
+                textTransform: 'uppercase',
+                color: color.fainter,
+                marginTop: 4,
+                fontWeight: 600,
+              }}
+            >
+              {volumeLabel(latestNo)} · No. {latestNo}
+            </div>
+          )}
         </div>
 
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '18px 14px', flex: 1 }}>

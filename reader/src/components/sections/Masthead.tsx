@@ -1,4 +1,5 @@
 import { color, font } from '../../theme/tokens'
+import { volumeLabel } from '../../lib/masthead'
 
 export function Masthead({ issueNo, dateLabel }: { issueNo: number; dateLabel: string }) {
   return (
@@ -6,7 +7,7 @@ export function Masthead({ issueNo, dateLabel }: { issueNo: number; dateLabel: s
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
         fontSize: 11, letterSpacing: '.18em', textTransform: 'uppercase', color: color.fainter,
         fontWeight: 600 }}>
-        <span>Vol. II — No. {issueNo}</span>
+        <span>{volumeLabel(issueNo)} — No. {issueNo}</span>
         <span>{dateLabel}</span>
       </div>
       <h1 style={{ fontFamily: font.display, fontWeight: 500, fontSize: 'clamp(46px,7vw,82px)',

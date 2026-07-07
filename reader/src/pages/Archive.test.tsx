@@ -38,3 +38,7 @@ test('populated → grouped archive + onOpen', async () => {
   fireEvent.click(screen.getByText(/Amor Fati/i))
   expect(opened.length).toBe(1)
 })
+test('header spells out the real edition count, not a hardcoded number', async () => {
+  wrap(mk(S({}), true))                                    // ARCHIVE.total === 7
+  expect(await screen.findByText(/Seven mornings, and counting\./i)).toBeInTheDocument()
+})
