@@ -72,3 +72,8 @@ test('Generate is disabled with a nudge until embeddings exist', async () => {
   fireEvent.click(gen)
   expect(spy.trigger).toBe(0)                        // clicking a disabled button does nothing
 })
+
+test('shows how many themes were generated beside re-index', async () => {
+  wrap([])                                           // S() sets theme_count: 1 when indexed
+  expect(await screen.findByText(/42 notes · 1 theme\./i)).toBeInTheDocument()
+})
