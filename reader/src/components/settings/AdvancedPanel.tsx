@@ -20,6 +20,7 @@ export function AdvancedPanel({ noteCount }: { noteCount: number }) {
   const active = status.data?.active_jobs ?? []
   const reindexing = active.includes('ingest') || active.includes('cluster')
   const generating = active.includes('generate')
+  const indexed = status.data?.indexed ?? false   // themes/embeddings exist → can compose a real edition
 
   function cancelReindex() {
     cancel.mutate('ingest'); cancel.mutate('cluster')
@@ -40,10 +41,16 @@ export function AdvancedPanel({ noteCount }: { noteCount: number }) {
           </p>
         </div>
         <div>
-          <button type="button" disabled={generating || generate.isPending} style={btnStyle(generating || generate.isPending)}
+          <button type="button" disabled={generating || generate.isPending || !indexed}
+            style={btnStyle(generating || generate.isPending || !indexed)}
             onClick={() => generate.mutate()}>Generate an issue now</button>
           {generating && <button type="button" style={cancelStyle} onClick={() => cancel.mutate('generate')}>Cancel</button>}
           {generating && <span style={{ marginLeft: 12, fontSize: 14, color: color.muted, fontStyle: 'italic' }}>Composing…</span>}
+          {status.data && !indexed && !generating && (
+            <p style={{ fontSize: 13, color: color.faint, marginTop: 8, fontStyle: 'italic' }}>
+              Generate embeddings first — run “Re-index notes &amp; embeddings” above.
+            </p>
+          )}
         </div>
       </div>
     </div>
