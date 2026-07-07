@@ -396,8 +396,8 @@ Expected:
 ### 7.4 macOS signature/notarization verification
 
 ```bash
-codesign --verify --deep --strict /Applications/againpage.app
-spctl -a -vv /Applications/againpage.app
+codesign --verify --deep --strict /Applications/Againpage.app
+spctl -a -vv /Applications/Againpage.app
 ```
 
 Expected:
