@@ -77,8 +77,7 @@ againpage/
 │       └── platform/       # desktop seams (folder picker, key store, connection test)
 │
 ├── desktop/                # Tauri v2 desktop shell (Rust)
-│   ├── src-tauri/          # Rust sidecar host, tauri.conf.json, icons, binaries/, resources/
-│   └── BUILD.md            # full per-platform build + sign runbook
+│   └── src-tauri/          # Rust sidecar host, tauri.conf.json, icons, binaries/, resources/
 │
 ├── infra/
 │   └── docker-compose.yaml # Postgres 17 + pgvector for local dev
@@ -173,10 +172,6 @@ overriding real environment variables.
 pnpm dev          # = pnpm db:up && tauri dev (runs the reader inside the shell)
 ```
 
-See [`desktop/BUILD.md`](./desktop/BUILD.md) for producing an installable app —
-that needs PyInstaller engine sidecars and a bundled Postgres, which are a
-manual, per-platform step.
-
 ### Handy root scripts
 
 | Command             | What it does                                              |
@@ -185,7 +180,7 @@ manual, per-platform step.
 | `pnpm db:down`      | stop it                                                    |
 | `pnpm db:reset`     | **drop the schema and re-migrate** (wipes local data)     |
 | `pnpm dev`          | db up + Tauri desktop dev                                 |
-| `pnpm build:desktop`| `tauri build` (see BUILD.md prerequisites)                |
+| `pnpm build:desktop`| `tauri build` — packages the app (needs engine sidecars + bundled Postgres) |
 | `pnpm stack:*`      | full docker-compose stack up/down/logs                    |
 
 ---
@@ -265,7 +260,7 @@ Before opening a PR, run all of: engine `pytest`, reader `test`, `lint`, and
 - **Data access:** `engine/src/againpage/storage/repository.py`
 - **Edition generation:** `engine/src/againpage/generation/`
 - **Reader entry:** `reader/src/pages/Reader.tsx` and `reader/src/api/`
-- **Desktop packaging:** `desktop/BUILD.md`
+- **Desktop shell / packaging:** `desktop/src-tauri/` (`tauri.conf.json`)
 
 Questions or unsure where something belongs? Open a draft PR or an issue and
 ask — a short conversation up front beats a large redirect later.
