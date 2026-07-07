@@ -74,38 +74,41 @@ git clone <this-repo-url> againpage
 cd againpage
 ```
 
-### 3. Run it
+### 3. Run the engine
 
-Point `VAULT_PATH` at your notes folder and start the stack:
-
-```bash
-VAULT_PATH="/absolute/path/to/your/notes" docker compose up --build
-```
-
-Prefer a hosted writer model? Add your OpenRouter key (you can also do this later
-in the app):
+Point `VAULT_PATH` at your notes folder and start the engine (Postgres + API +
+worker) in the background:
 
 ```bash
-OPENROUTER_API_KEY="sk-or-..." VAULT_PATH="/absolute/path/to/your/notes" docker compose up --build
+OPENROUTER_API_KEY="sk-or-..." VAULT_PATH="/absolute/path/to/your/notes" \
+  docker compose up --build -d
 ```
 
-When it finishes building, open **<http://localhost:5173>**.
+(Going fully local with Ollama instead? Drop the key and choose Ollama in the
+reader later.) The engine's API is now at **`http://localhost:8000`**.
 
-### 4. First run
+### 4. Get the reader
 
-1. **Notes folder** — in onboarding, set your notes folder to `/vault` (that's
-   your `VAULT_PATH`, mounted read-only inside the app).
-2. **AI source** — choose **OpenRouter** (paste your key; it provides both the
-   writer and the embedding models) or **Ollama** for a fully local/private setup
-   (set the endpoint to `http://host.docker.internal:11434` and pick the models
-   you pulled). Use **Test connection** to confirm.
-3. **Index** — open **Settings → Advanced** and run **Re-index notes & embeddings**.
-   It reads your vault, summarises and embeds each note, and composes your themes.
-4. **Read** — generate your first edition and open it. Every past edition is kept
-   in the archive.
+The reader is a small desktop app that connects to the engine.
 
-To stop the stack: `Ctrl-C`, then `docker compose down`. Your data persists in a
-local Docker volume between runs.
+- **Download** the build for your OS (macOS `.dmg`, Windows `.exe`/`.msi`, Linux
+  `.AppImage`/`.deb`) from the **Releases** page and open it. If the engine is on
+  this machine, it connects to `http://localhost:8000` automatically.
+- **Or run from source:** `pnpm install && pnpm --filter reader dev`, then open
+  <http://localhost:5173>.
+
+### 5. First run (in the reader)
+
+1. **Notes folder** — set it to `/vault` (your `VAULT_PATH`, mounted read-only in
+   the engine). Type the path **as the engine sees it**.
+2. **AI source** — **OpenRouter** (one key covers writer + embeddings) or
+   **Ollama** for a fully local setup (`http://host.docker.internal:11434`). Use
+   **Test connection** to confirm.
+3. **Index** — **Settings → Advanced → Re-index notes & embeddings**.
+4. **Read** — generate your first edition. Every past edition lives in the archive.
+
+To stop the engine: `docker compose down`. Your data persists in a local Docker
+volume between runs.
 
 ## Home lab / self-hosted (advanced)
 
@@ -122,7 +125,7 @@ API, and worker:
 
 ```bash
 VAULT_PATH="/mnt/notes" OPENROUTER_API_KEY="sk-or-..." pnpm engine:up
-#   ≡ docker compose up --build -d db api worker   (no reader container)
+#   ≡ docker compose up --build -d   (Postgres + API + worker)
 ```
 
 The API listens on `0.0.0.0:8000` — reachable from other machines on your

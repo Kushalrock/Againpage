@@ -1,13 +1,23 @@
 mod keychain;
-mod sidecar;
 mod vault;
+// The bundled-engine build (Postgres + api/worker sidecars packaged inside the
+// app) is gated behind the `bundled-engine` Cargo feature, which is OFF by
+// default. The default build is the *reader-only* app: it ships no engine and
+// talks to an engine you host separately (see the app's Engine URL setting).
+#[cfg(feature = "bundled-engine")]
+mod sidecar;
 
+#[cfg(feature = "bundled-engine")]
 use std::sync::Mutex;
+#[cfg(feature = "bundled-engine")]
 use std::time::Duration;
-
+#[cfg(feature = "bundled-engine")]
 use sidecar::ports::free_port;
+#[cfg(feature = "bundled-engine")]
 use sidecar::postgres::Postgres;
+#[cfg(feature = "bundled-engine")]
 use sidecar::supervisor::Supervisor;
+#[cfg(feature = "bundled-engine")]
 use tauri::Manager;
 
 /// Shared runtime state handed to the frontend/reader and torn down on exit.
@@ -15,10 +25,11 @@ use tauri::Manager;
 /// `postgres` is only present once `setup` has started it; `supervisor`
 /// mirrors that. Both are behind a `Mutex` so the periodic monitor thread and
 /// the exit hook can coordinate without racing each other.
+#[cfg(feature = "bundled-engine")]
 struct AppState {
     supervisor: Mutex<Option<Supervisor>>,
     postgres: Mutex<Option<Postgres>>,
-    /// `http://127.0.0.1:{api_port}` — the base URL the reader (Task 6) talks to.
+    /// `http://127.0.0.1:{api_port}` — the base URL the reader talks to.
     #[allow(dead_code)]
     api_base: Mutex<Option<String>>,
 }
@@ -28,8 +39,8 @@ struct AppState {
 /// Kept as a free function (rather than inline in `run`) so a failure here is
 /// a single early return instead of unwinding through the whole `setup`
 /// closure. Errors are logged (never panicking `setup`, which would prevent
-/// the window from ever showing) — a fully headless-DB failure mode is an
-/// M6-finish concern, not something to block compilation on here.
+/// the window from ever showing).
+#[cfg(feature = "bundled-engine")]
 fn boot_sidecars(app: &tauri::App) -> Result<(), String> {
     let app_data_dir = app
         .path()
@@ -37,11 +48,6 @@ fn boot_sidecars(app: &tauri::App) -> Result<(), String> {
         .map_err(|e| format!("resolve app_data_dir: {e}"))?;
     std::fs::create_dir_all(&app_data_dir).map_err(|e| e.to_string())?;
 
-    // Bundled resources: resources/postgres/<platform>/bin (Postgres) and
-    // resources/engine/{againpage-api,againpage-worker}/... (PyInstaller
-    // sidecars). Resolution of the exact per-platform resource layout is
-    // owned by the bundling task (M6 T8); here we just need *a* PathBuf to
-    // construct Postgres/Supervisor with so the module wiring compiles.
     let resource_dir = app
         .path()
         .resource_dir()
@@ -57,9 +63,6 @@ fn boot_sidecars(app: &tauri::App) -> Result<(), String> {
 
     let mut supervisor = Supervisor::new(db_url, api_port, engine_dir);
     if let Err(e) = supervisor.start() {
-        // Sidecar binaries aren't present outside a packaged build; don't
-        // treat that as fatal for `setup` (dev builds run against pnpm dev
-        // servers, not these sidecars). Postgres stays up; log and continue.
         eprintln!("supervisor start failed (expected in unpackaged dev runs): {e}");
     }
 
@@ -68,13 +71,8 @@ fn boot_sidecars(app: &tauri::App) -> Result<(), String> {
     *state.supervisor.lock().unwrap() = Some(supervisor);
     *state.api_base.lock().unwrap() = Some(api_base);
 
-    // Monitor thread: polls at a fixed base cadence normally so a crashed
-    // child is detected and retried within ~one base interval. Backoff is
-    // keyed off actual restart events (tick() returning true), not elapsed
-    // polls: each consecutive tick that (re)spawns something doubles the
-    // next delay (capped at max_delay), so a crash-looping child stops
-    // spinning the CPU/logs. A single healthy tick (nothing to restart)
-    // resets the delay back to base_delay immediately.
+    // Monitor thread: detects a crashed child within ~one base interval and
+    // retries, with restart-keyed backoff so a crash-loop can't spin the CPU.
     let handle = app.handle().clone();
     std::thread::spawn(move || {
         let base_delay = Duration::from_secs(2);
@@ -85,7 +83,6 @@ fn boot_sidecars(app: &tauri::App) -> Result<(), String> {
             let state = handle.state::<AppState>();
             let mut guard = state.supervisor.lock().unwrap();
             let Some(sup) = guard.as_mut() else {
-                // Supervisor was torn down (shutdown in progress) — stop polling.
                 break;
             };
             let restarted = sup.tick();
@@ -104,20 +101,28 @@ fn boot_sidecars(app: &tauri::App) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    #[allow(unused_mut)]
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_dialog::init())
-        .manage(AppState {
-            supervisor: Mutex::new(None),
-            postgres: Mutex::new(None),
-            api_base: Mutex::new(None),
-        })
-        .setup(|app| {
-            if let Err(e) = boot_sidecars(app) {
-                eprintln!("boot_sidecars failed: {e}");
-            }
-            Ok(())
-        })
+        .plugin(tauri_plugin_dialog::init());
+
+    #[cfg(feature = "bundled-engine")]
+    {
+        builder = builder
+            .manage(AppState {
+                supervisor: Mutex::new(None),
+                postgres: Mutex::new(None),
+                api_base: Mutex::new(None),
+            })
+            .setup(|app| {
+                if let Err(e) = boot_sidecars(app) {
+                    eprintln!("boot_sidecars failed: {e}");
+                }
+                Ok(())
+            });
+    }
+
+    builder
         .invoke_handler(tauri::generate_handler![
             keychain::keychain_set,
             keychain::keychain_get,
@@ -126,10 +131,11 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app_handle, event| {
-            if let tauri::RunEvent::Exit = event {
-                let state: tauri::State<AppState> = app_handle.state();
-                // Order: worker -> api (inside Supervisor::shutdown), then postgres.
+        .run(|_app_handle, _event| {
+            // Bundled engine: tear down worker -> api -> postgres on exit.
+            #[cfg(feature = "bundled-engine")]
+            if let tauri::RunEvent::Exit = _event {
+                let state: tauri::State<AppState> = _app_handle.state();
                 let sup_taken = state.supervisor.lock().unwrap().take();
                 if let Some(mut sup) = sup_taken {
                     sup.shutdown();

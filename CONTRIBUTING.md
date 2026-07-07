@@ -82,7 +82,7 @@ againpage/
 ├── infra/
 │   └── docker-compose.yaml # Postgres 17 + pgvector for local dev
 │
-├── package.json            # workspace root scripts (db:*, dev, build:desktop, stack:*)
+├── package.json            # workspace root scripts (db:*, dev, build:desktop, engine:*)
 ├── pnpm-workspace.yaml
 └── LICENSE
 ```
@@ -181,7 +181,7 @@ pnpm dev          # = pnpm db:up && tauri dev (runs the reader inside the shell)
 | `pnpm db:reset`     | **drop the schema and re-migrate** (wipes local data)     |
 | `pnpm dev`          | db up + Tauri desktop dev                                 |
 | `pnpm build:desktop`| `tauri build` — packages the app (needs engine sidecars + bundled Postgres) |
-| `pnpm stack:*`      | full docker-compose stack up/down/logs                    |
+| `pnpm engine:*`     | engine (db + api + worker) via docker compose: up/logs/down |
 
 ---
 

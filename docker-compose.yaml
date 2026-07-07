@@ -1,15 +1,20 @@
-# Full local AgainPage stack in one command:
+# Againpage engine (Postgres + API + worker) — deploy this anywhere:
 #
-#   OPENROUTER_API_KEY=sk-or-...  VAULT_PATH=/abs/path/to/notes  docker compose up --build
+#   OPENROUTER_API_KEY=sk-or-...  VAULT_PATH=/abs/path/to/notes  docker compose up --build -d
 #
-# then open http://localhost:5173  (API on :8000, Postgres on :5432).
+# The API listens on :8000 (Postgres on :5432). The reader is a separate,
+# downloadable desktop app — point it at this engine's URL (e.g.
+# http://localhost:8000 on this machine, or http://SERVER_IP:8000 for a
+# home-lab host) via the reader's onboarding "Engine URL" field.
 #
 # Notes:
-# - Put OPENROUTER_API_KEY in the shell env or in an `.env` beside this file.
+# - Put OPENROUTER_API_KEY in the shell env or an `.env` beside this file, or
+#   just enter keys in the reader's settings instead.
 # - VAULT_PATH mounts your notes read-only at /vault; set the notes folder to
-#   /vault in Settings. Defaults to ./notes if unset.
-# - For a host-run Ollama, set the Ollama endpoint in Settings to
-#   http://host.docker.internal:11434 (embeddings run locally, off the network).
+#   /vault in the reader. Defaults to ./notes if unset.
+# - For a host-run Ollama, set the Ollama endpoint to
+#   http://host.docker.internal:11434 (fully local, off the network).
+# - The API is unauthenticated (single-user) — keep it on a trusted LAN / VPN.
 services:
   db:
     image: pgvector/pgvector:pg17
@@ -67,14 +72,6 @@ services:
     depends_on:
       db: { condition: service_healthy }
       api: { condition: service_healthy }
-
-  reader:
-    build:
-      context: .
-      dockerfile: reader/Dockerfile
-    ports: ["5173:80"]
-    depends_on:
-      - api
 
 volumes:
   pgdata: {}
