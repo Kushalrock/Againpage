@@ -24,6 +24,7 @@ def main() -> None:
     dsn = os.environ.get("DATABASE_URL", db.DEFAULT_DSN)
 
     async def _amain() -> None:
+        await db.ensure_vector_extension(dsn)   # fresh DB: create pgvector ext before the pool
         pool = db.make_pool(dsn, open=False)
         await pool.open()
         await migrate.apply(pool)

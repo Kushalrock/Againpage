@@ -14,6 +14,7 @@ from againpage.storage import db, migrate
 async def _main() -> None:
     load_env()
     dsn = os.environ.get("DATABASE_URL", db.DEFAULT_DSN)
+    await db.ensure_vector_extension(dsn)   # fresh DB: create pgvector ext before the pool
     pool = db.make_pool(dsn, open=False)
     await pool.open()
     async with pool.connection() as conn:

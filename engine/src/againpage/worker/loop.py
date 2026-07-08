@@ -136,6 +136,7 @@ def main() -> None:  # pragma: no cover
                  "set" if os.environ.get("OPENROUTER_API_KEY") else "MISSING",
                  "set" if os.environ.get("OLLAMA_API_KEY") else "unset (fine for local Ollama)")
         log.info("starting worker (DATABASE_URL=%s)", dsn)
+        await db.ensure_vector_extension(dsn)   # fresh DB: create pgvector ext before the pool
         pool = db.make_pool(dsn, open=False)
         await pool.open()
         await migrate.apply(pool)
