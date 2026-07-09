@@ -47,3 +47,7 @@ temp/
 # ---- Local process artifacts (kept on disk, never in git) ----
 docs/
 .superpowers/
+# Android signing (never commit)
+*.jks
+*.keystore
+keystore.properties
