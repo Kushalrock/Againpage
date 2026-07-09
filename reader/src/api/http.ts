@@ -8,25 +8,28 @@ export function httpClient(baseUrl?: string): ApiClient {
   // lets a saved URL take effect on the next refetch instead of only after a
   // full app restart. An explicit `baseUrl` (e.g. in tests) still pins it.
   const base = () => baseUrl ?? apiBase()
-  const get = async (p: string) => {
-    const res = await fetch(base() + p)
-    if (!res.ok) throw new Error(`${p} → ${res.status}`)
-    return res.json()
+  // Abort a request that hangs (e.g. an engine URL that routes but never
+  // answers) so the UI surfaces an error instead of spinning forever.
+  const TIMEOUT_MS = 20000
+  const withTimeout = async (p: string, init?: RequestInit) => {
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+    try {
+      const res = await fetch(base() + p, { ...init, signal: ctrl.signal })
+      if (!res.ok) throw new Error(`${p} → ${res.status}`)
+      return res.json()
+    } finally {
+      clearTimeout(timer)
+    }
   }
-  const put = async (p: string, body: unknown) => {
-    const res = await fetch(base() + p, {
+  const get = (p: string) => withTimeout(p)
+  const put = (p: string, body: unknown) =>
+    withTimeout(p, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     })
-    if (!res.ok) throw new Error(`${p} → ${res.status}`)
-    return res.json()
-  }
-  const post = async (p: string) => {
-    const res = await fetch(base() + p, { method: 'POST' })
-    if (!res.ok) throw new Error(`${p} → ${res.status}`)
-    return res.json()
-  }
+  const post = (p: string) => withTimeout(p, { method: 'POST' })
   return {
     getTodayIssue: () => get('/issues/today'),
     getIssue: (id) => get(`/issues/${id}`),

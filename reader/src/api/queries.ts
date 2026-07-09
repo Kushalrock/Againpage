@@ -28,7 +28,10 @@ export function useArchive() {
 }
 export function useSettings() {
   const client = useClient()
-  return useQuery({ queryKey: ['settings'], queryFn: () => client.getSettings() })
+  // retry:false — on a fresh install the engine is often unreachable (no URL
+  // set yet); retrying 3× with backoff just stalls the "Loading…" gate for
+  // seconds before onboarding can appear. Fail fast and show onboarding.
+  return useQuery({ queryKey: ['settings'], queryFn: () => client.getSettings(), retry: false })
 }
 export function useSaveSettings() {
   const client = useClient()
