@@ -152,6 +152,18 @@ server** (required — otherwise every screen fails to load):
    because of the Docker mount.*
 3. AI source → index → read, as above.
 
+#### Android (reader)
+
+There's also an Android build of the reader. Download `Againpage_<version>_android.apk`
+from the [Releases](https://github.com/Kushalrock/Againpage/releases) page and open
+it on your phone — Android will ask you to allow installing from this source; enable
+it, then install. It's a thin client, so it works exactly like the split setup above:
+on the welcome step set the **Engine URL** to your server (e.g. your Tailscale/VPN
+address such as `https://your-host.tailXXXX.ts.net`), and it reads from the engine —
+it never indexes locally, so there's no folder picker. If the engine is already set
+up, onboarding exits on its own once it connects. Use an **`https://`** engine URL:
+the release build blocks plain-`http` (cleartext) traffic.
+
 > **⚠️ Security.** The engine API is **unauthenticated** and single-user. Keep it
 > on a **trusted LAN or VPN** — never expose it to the public internet; anyone who
 > can reach it can read your notes.
