@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ClientContext } from '../api/queries'
 import { fixtureClient } from '../api/fixtures'
 import { PlatformContext, type Platform } from '../platform'
+import type { ApiClient } from '../api/client'
 import { storedApiBase } from '../api/base'
 import { Onboarding } from './Onboarding'
 
@@ -48,4 +49,23 @@ test('the engine URL field persists a base URL for a remote engine', () => {
   wrap()
   fireEvent.change(screen.getByLabelText(/engine URL/i), { target: { value: 'http://server:8000' } })
   expect(storedApiBase()).toBe('http://server:8000')
+})
+
+test('Finish surfaces an error and stays put when the save fails (unreachable engine)', async () => {
+  const qc = new QueryClient()
+  const failing: ApiClient = { ...fixtureClient, saveSettings: async () => { throw new Error('unreachable') } }
+  render(<QueryClientProvider client={qc}>
+    <ClientContext.Provider value={failing}>
+      <PlatformContext.Provider value={fakePlatform()}>
+        <Onboarding onDone={() => {}} />
+      </PlatformContext.Provider></ClientContext.Provider></QueryClientProvider>)
+  fireEvent.click(screen.getByText(/Begin/i))                              // → step 1
+  fireEvent.change(screen.getByLabelText(/folder path/i), { target: { value: '/vault/n' } })
+  fireEvent.click(screen.getByText('Add path'))
+  fireEvent.click(screen.getByText(/Continue/i))                           // → step 2
+  fireEvent.click(screen.getByText('OpenRouter'))
+  fireEvent.click(screen.getByText(/Continue/i))                           // → step 3
+  fireEvent.click(screen.getByText(/Continue/i))                           // → step 4
+  fireEvent.click(screen.getByText(/Finish/i))
+  expect(await screen.findByRole('alert')).toHaveTextContent(/couldn't save/i)  // shown, not silent
 })

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSaveSettings } from '../api/queries'
-import { setApiBase, storedApiBase } from '../api/base'
+import { apiBase, setApiBase, storedApiBase } from '../api/base'
 import { usePlatform } from '../platform'
 import { lengthLabel } from '../lib/readingLength'
 import { PROVIDER_DEFAULTS } from '../lib/providerDefaults'
@@ -70,6 +70,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [profileText, setProfileText] = useState('')
   const [engineUrl, setEngineUrl] = useState(storedApiBase())
   const [pathInput, setPathInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const queryClient = useQueryClient()
 
   const canNext = step === 1 ? folders.length > 0 : step === 2 ? !!aiSource : true
@@ -108,12 +110,24 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       if (provider === 'ollama') patch.ollama_key = apiKey.trim()
       else patch.openrouter_key = apiKey.trim()
     }
-    await save.mutateAsync(patch)
-    setStep(5)
+    setSaving(true)
+    setSaveError('')
+    try {
+      await save.mutateAsync(patch)
+      setStep(5)
+    } catch {
+      // The save couldn't reach (or was rejected by) the engine. Surface it
+      // instead of silently doing nothing — otherwise "Finish" looks dead.
+      setSaveError(
+        `Couldn't save to the engine at ${apiBase()}. Check it's running and the ` +
+        `Engine URL (welcome step) is correct, then try Finish again.`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   function next() {
-    if (!canNext) return
+    if (!canNext || saving) return
     if (step === 4) {
       void finish()
       return
@@ -414,6 +428,13 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           )}
         </div>
 
+        {saveError && (
+          <div role="alert" style={{ marginTop: 20, background: color.card, border: `1px solid ${color.accent}`,
+            borderRadius: 6, padding: '12px 16px', fontSize: 14, lineHeight: 1.5, color: color.accent }}>
+            {saveError}
+          </div>
+        )}
+
         {showNav && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 36, paddingTop: 24, borderTop: `1px solid ${color.border}` }}>
             <button type="button" onClick={back} style={{ background: 'transparent', border: 'none', fontSize: 15, color: color.faint, cursor: 'pointer', padding: '8px 0' }}>
@@ -434,12 +455,13 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             <button
               type="button"
               onClick={next}
+              disabled={saving}
               style={{
                 background: color.dark, color: color.paper, border: `1px solid ${color.dark}`, borderRadius: 5,
-                padding: '11px 24px', fontSize: 15, cursor: 'pointer',
+                padding: '11px 24px', fontSize: 15, cursor: saving ? 'default' : 'pointer', opacity: saving ? 0.6 : 1,
               }}
             >
-              {nextLabel}
+              {saving ? 'Saving…' : nextLabel}
             </button>
           </div>
         )}
