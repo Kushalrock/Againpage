@@ -40,6 +40,14 @@ pub fn keychain_delete_impl(service: &str, key: &str) -> Result<(), String> {
 // unit-tested on the host CI runner even though it is only *used* on Android. ----
 pub mod file_store {
     use super::*;
+    use std::sync::Mutex;
+
+    // Serializes the load -> mutate -> persist sequence in `set`/`delete` so
+    // two concurrent invocations can't both read the old map and have the
+    // second write clobber the first's change. `get` is read-only and, since
+    // `persist` writes atomically (see below), never observes a partial
+    // file, so it does not need the lock.
+    static WRITE_LOCK: Mutex<()> = Mutex::new(());
 
     fn entry_key(service: &str, key: &str) -> String {
         format!("{service}/{key}")
@@ -52,15 +60,24 @@ pub mod file_store {
         }
     }
 
+    // Writes are made atomic by writing to a sibling temp file and renaming
+    // it over the target. A rename within the same directory is atomic on
+    // the target platforms, so a reader (`load`) always observes either the
+    // complete old file or the complete new file -- never a truncated one
+    // from a crash mid-write. This prevents `load`'s `unwrap_or_default()`
+    // fallback from silently discarding every previously stored secret.
     fn persist(path: &Path, map: &Map<String, Value>) -> Result<(), String> {
-        if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
+        let parent = path.parent().ok_or_else(|| "invalid store path: no parent directory".to_string())?;
+        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         let bytes = serde_json::to_vec(map).map_err(|e| e.to_string())?;
-        std::fs::write(path, bytes).map_err(|e| e.to_string())
+
+        let tmp_path = path.with_extension("json.tmp");
+        std::fs::write(&tmp_path, &bytes).map_err(|e| e.to_string())?;
+        std::fs::rename(&tmp_path, path).map_err(|e| e.to_string())
     }
 
     pub fn set(path: &Path, service: &str, key: &str, value: &str) -> Result<(), String> {
+        let _guard = WRITE_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let mut map = load(path);
         map.insert(entry_key(service, key), Value::String(value.to_string()));
         persist(path, &map)
@@ -75,6 +92,7 @@ pub mod file_store {
     }
 
     pub fn delete(path: &Path, service: &str, key: &str) -> Result<(), String> {
+        let _guard = WRITE_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         let mut map = load(path);
         map.remove(&entry_key(service, key));
         persist(path, &map)
@@ -173,6 +191,30 @@ mod tests {
         assert_eq!(file_store::get(&path, "againpage", "k").unwrap(), None);
         // delete of a missing key is a no-op success (matches desktop NoEntry semantics)
         file_store::delete(&path, "againpage", "missing").unwrap();
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Guards Finding 2's read-modify-write merge semantics: a set for one key
+    /// must not clobber a different key already persisted by an earlier set.
+    #[test]
+    fn file_store_set_preserves_other_keys() {
+        let dir = std::env::temp_dir().join(format!("againpage_filestore_merge_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("secrets.json");
+
+        file_store::set(&path, "againpage", "key-a", "value-a").unwrap();
+        file_store::set(&path, "againpage", "key-b", "value-b").unwrap();
+
+        assert_eq!(
+            file_store::get(&path, "againpage", "key-a").unwrap(),
+            Some("value-a".to_string()),
+            "second set() must not discard the first key's value"
+        );
+        assert_eq!(
+            file_store::get(&path, "againpage", "key-b").unwrap(),
+            Some("value-b".to_string())
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }
