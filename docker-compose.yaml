@@ -3,10 +3,15 @@
 #   VAULT_PATH=/abs/path/to/notes  docker compose up --build -d
 #   (provider, models, and API key are entered in the reader UI, not here)
 #
-# The API listens on :8000 (Postgres on :5432). The reader is a separate,
-# downloadable desktop app — point it at this engine's URL (e.g.
-# http://localhost:8000 on this machine, or http://SERVER_IP:8000 for a
-# home-lab host) via the reader's onboarding "Engine URL" field.
+# The API binds 127.0.0.1:8000 (loopback ONLY — never the public interface);
+# Postgres is not published to the host at all. The reader is a separate,
+# downloadable desktop app pointed at the engine's URL via its "Engine URL"
+# setting:
+#   - all-in-one machine → http://localhost:8000 (works out of the box).
+#   - server / home lab   → expose it on your private tailnet with
+#     `tailscale serve --bg 8000` and use the https://<host>.<tailnet>.ts.net
+#     URL, or bind the API to the tailnet IP. Do NOT publish it on 0.0.0.0:
+#     the API is unauthenticated. Set POSTGRES_PASSWORD (env/.env) on a server.
 #
 # Notes:
 # - Put OPENROUTER_API_KEY in the shell env or an `.env` beside this file, or
@@ -25,9 +30,10 @@ services:
   db:
     image: pgvector/pgvector:pg17
     environment:
-      POSTGRES_PASSWORD: dev
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev}
       POSTGRES_DB: againpage
-    ports: ["5432:5432"]
+    # Not published to the host: the API/worker reach it over the compose
+    # network as db:5432. For local psql use `docker compose exec db psql -U postgres`.
     volumes: ["pgdata:/var/lib/postgresql/data"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d againpage"]
@@ -39,12 +45,15 @@ services:
     build: { context: ./engine }
     command: ["againpage-api"]
     environment:
-      DATABASE_URL: postgresql://postgres:dev@db:5432/againpage
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-dev}@db:5432/againpage
       AGAINPAGE_API_HOST: 0.0.0.0
       AGAINPAGE_API_PORT: "8000"
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
-    ports: ["8000:8000"]
+    # Loopback only — NOT the public interface. On a server, expose it on your
+    # private tailnet with `tailscale serve --bg 8000` (see README), or bind to
+    # the tailnet IP. For an all-in-one machine the reader reaches localhost:8000.
+    ports: ["127.0.0.1:8000:8000"]
     # The API scans the vault for /status note counts and can test a host Ollama,
     # so it needs the same mount + host gateway as the worker.
     extra_hosts:
@@ -68,7 +77,7 @@ services:
     build: { context: ./engine }
     command: ["againpage-worker"]
     environment:
-      DATABASE_URL: postgresql://postgres:dev@db:5432/againpage
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-dev}@db:5432/againpage
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       OLLAMA_API_KEY: ${OLLAMA_API_KEY:-}
     extra_hosts:
