@@ -55,6 +55,13 @@ pub mod file_store {
 
     fn load(path: &Path) -> Map<String, Value> {
         match std::fs::read(path) {
+            // A missing file is the expected first-run state -> empty map.
+            // `persist`'s atomic write rules out a truncated file from a crash,
+            // so the only remaining way to reach `unwrap_or_default()` is a
+            // genuinely corrupt / hand-edited `secrets.json`: that silently
+            // discards every stored secret (the user is quietly logged out).
+            // Accepted for this alpha under the OS-sandbox security model; a
+            // future iteration should surface it rather than swallow it.
             Ok(bytes) => serde_json::from_slice(&bytes).unwrap_or_default(),
             Err(_) => Map::new(),
         }
