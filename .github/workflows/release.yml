@@ -116,9 +116,12 @@ jobs:
           EOF
 
       - name: Build signed APK
-        env:
-          NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
-        run: pnpm --filter desktop exec tauri android build --apk
+        # ANDROID_HOME is injected by the runner; the NDK version below matches
+        # the one installed in the SDK-packages step. ${{ env.* }} can't see
+        # runner-injected vars, so resolve NDK_HOME from the shell at run time.
+        run: |
+          export NDK_HOME="$ANDROID_HOME/ndk/27.1.12297006"
+          pnpm --filter desktop exec tauri android build --apk
 
       - name: Upload APK to the draft release
         env:
