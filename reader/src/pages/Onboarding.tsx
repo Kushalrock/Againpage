@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useSaveSettings } from '../api/queries'
 import { apiBase, setApiBase, storedApiBase } from '../api/base'
 import { usePlatform } from '../platform'
+import { isAndroid } from '../platform/mobile'
 import { lengthLabel } from '../lib/readingLength'
 import { PROVIDER_DEFAULTS } from '../lib/providerDefaults'
 import { Logo } from '../components/Logo'
@@ -72,6 +73,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [pathInput, setPathInput] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const mobile = isAndroid()
   const queryClient = useQueryClient()
 
   const canNext = step === 1 ? folders.length > 0 : step === 2 ? !!aiSource : true
@@ -197,7 +199,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               <p style={{ fontSize: 16, lineHeight: 1.6, color: color.muted, marginTop: 10 }}>
                 Choose the folder of markdown files it should read. This is the only thing you grant access to — and it never leaves your machine.
               </p>
-              {folders.length === 0 && (
+              {!mobile && folders.length === 0 && (
                 <button
                   type="button"
                   onClick={pickFolder}
@@ -235,11 +237,13 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                       </div>
                     ))}
                   </div>
-                  <button type="button" onClick={pickFolder}
-                    style={{ marginTop: 12, background: 'transparent', border: `1px solid ${color.borderStrong}`,
-                      borderRadius: 5, padding: '10px 16px', fontSize: 14, color: color.muted, cursor: 'pointer' }}>
-                    + Add another folder
-                  </button>
+                  {!mobile && (
+                    <button type="button" onClick={pickFolder}
+                      style={{ marginTop: 12, background: 'transparent', border: `1px solid ${color.borderStrong}`,
+                        borderRadius: 5, padding: '10px 16px', fontSize: 14, color: color.muted, cursor: 'pointer' }}>
+                      + Add another folder
+                    </button>
+                  )}
                   <div style={{ marginTop: 18, display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, lineHeight: 1.55, color: color.muted }}>
                     <span style={{ color: color.ok, flex: '0 0 auto', fontWeight: 700 }}>✓</span>
                     <span>Indexing happens wherever the engine runs. You can fine-tune folders and exclusions later, in Settings.</span>

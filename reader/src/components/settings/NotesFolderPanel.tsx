@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { usePlatform } from '../../platform'
+import { isAndroid } from '../../platform/mobile'
 import { color, font } from '../../theme/tokens'
 import type { SettingsPatch } from '../../types/settings'
 
@@ -22,6 +23,7 @@ export function NotesFolderPanel({
   onChange: (patch: SettingsPatch) => void
 }) {
   const platform = usePlatform()
+  const mobile = isAndroid()
   const [newExcluded, setNewExcluded] = useState('')
   const [newPath, setNewPath] = useState('')
 
@@ -70,11 +72,13 @@ export function NotesFolderPanel({
           style={{ background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
             padding: '10px 16px', fontSize: 14, color: color.muted, cursor: 'pointer', whiteSpace: 'nowrap' }}>Add path</button>
       </div>
-      <button type="button" onClick={addFolder}
-        style={{ marginTop: 8, background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
-          padding: '8px 14px', fontSize: 13, color: color.faint, cursor: 'pointer' }}>
-        Use folder picker…
-      </button>
+      {!mobile && (
+        <button type="button" onClick={addFolder}
+          style={{ marginTop: 8, background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+            padding: '8px 14px', fontSize: 13, color: color.faint, cursor: 'pointer' }}>
+          Use folder picker…
+        </button>
+      )}
       <p style={{ fontSize: 12.5, color: color.faint, marginTop: 8, lineHeight: 1.5 }}>
         Type the path <em>as the engine sees it</em> — e.g.{' '}
         <span style={{ fontFamily: font.mono }}>/vault/your-folder</span>. Only use the picker if you run the engine

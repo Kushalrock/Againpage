@@ -69,3 +69,17 @@ test('Finish surfaces an error and stays put when the save fails (unreachable en
   fireEvent.click(screen.getByText(/Finish/i))
   expect(await screen.findByRole('alert')).toHaveTextContent(/couldn't save/i)  // shown, not silent
 })
+
+test('hides the native picker on Android but keeps the typed path (step 1)', () => {
+  const realUA = navigator.userAgent
+  Object.defineProperty(navigator, 'userAgent', {
+    value: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit', configurable: true })
+  try {
+    wrap()
+    fireEvent.click(screen.getByText(/Begin/i))                 // step 0 -> 1
+    expect(screen.queryByText(/Choose folder/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/folder path/i)).toBeInTheDocument()
+  } finally {
+    Object.defineProperty(navigator, 'userAgent', { value: realUA, configurable: true })
+  }
+})

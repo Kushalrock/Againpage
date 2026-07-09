@@ -56,3 +56,16 @@ test('add and remove excluded paths', () => {
   fireEvent.click(screen.getByLabelText('unexclude drafts/'))
   expect(patches.at(-1)).toEqual({ excluded_paths: [] })
 })
+
+test('hides the native folder picker on Android (typed path stays)', () => {
+  const realUA = navigator.userAgent
+  Object.defineProperty(navigator, 'userAgent', {
+    value: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit', configurable: true })
+  try {
+    wrap(['/a'], [])
+    expect(screen.queryByText(/use folder picker/i)).not.toBeInTheDocument()
+    expect(screen.getByLabelText(/add folder path/i)).toBeInTheDocument()
+  } finally {
+    Object.defineProperty(navigator, 'userAgent', { value: realUA, configurable: true })
+  }
+})
