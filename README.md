@@ -164,6 +164,14 @@ it never indexes locally, so there's no folder picker. If the engine is already 
 up, onboarding exits on its own once it connects. Use an **`https://`** engine URL:
 the release build blocks plain-`http` (cleartext) traffic.
 
+> **Tailscale + Android gotcha.** If the engine loads in the phone's browser but
+> the app fails with a name-resolution error (the reader can't reach a
+> MagicDNS `…ts.net` address), turn **Settings → Network & internet → Private
+> DNS → Off**. Android's Private DNS (DNS-over-TLS) routes lookups through a
+> public resolver that can't see private Tailscale names; the system WebView
+> follows it even though Chrome works around it. With Private DNS off, the
+> system uses Tailscale's resolver and the app connects.
+
 > **⚠️ Security.** The engine API is **unauthenticated** and single-user. Keep it
 > on a **trusted LAN or VPN** — never expose it to the public internet; anyone who
 > can reach it can read your notes.
