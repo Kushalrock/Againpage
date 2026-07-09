@@ -1,14 +1,20 @@
 import type { ApiClient } from './client'
 import { apiBase } from './base'
 
-export function httpClient(baseUrl = apiBase()): ApiClient {
+export function httpClient(baseUrl?: string): ApiClient {
+  // Resolve the base URL per request, not once at construction. The client is
+  // created a single time at app startup, but the user can change the engine
+  // URL at runtime (onboarding / settings). Reading `apiBase()` on each call
+  // lets a saved URL take effect on the next refetch instead of only after a
+  // full app restart. An explicit `baseUrl` (e.g. in tests) still pins it.
+  const base = () => baseUrl ?? apiBase()
   const get = async (p: string) => {
-    const res = await fetch(baseUrl + p)
+    const res = await fetch(base() + p)
     if (!res.ok) throw new Error(`${p} → ${res.status}`)
     return res.json()
   }
   const put = async (p: string, body: unknown) => {
-    const res = await fetch(baseUrl + p, {
+    const res = await fetch(base() + p, {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -17,7 +23,7 @@ export function httpClient(baseUrl = apiBase()): ApiClient {
     return res.json()
   }
   const post = async (p: string) => {
-    const res = await fetch(baseUrl + p, { method: 'POST' })
+    const res = await fetch(base() + p, { method: 'POST' })
     if (!res.ok) throw new Error(`${p} → ${res.status}`)
     return res.json()
   }
