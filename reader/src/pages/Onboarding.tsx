@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
-import { useSaveSettings } from '../api/queries'
+import { useSaveSettings, useClient } from '../api/queries'
 import { apiBase, setApiBase, storedApiBase } from '../api/base'
 import { usePlatform } from '../platform'
 import { isAndroid } from '../platform/mobile'
 import { lengthLabel } from '../lib/readingLength'
 import { PROVIDER_DEFAULTS } from '../lib/providerDefaults'
 import { Logo } from '../components/Logo'
+import { Connecting, Unreachable } from '../components/ConnectionStates'
+import { isConnectionError } from '../api/http'
 import { color, font } from '../theme/tokens'
 import type { Provider, SettingsPatch } from '../types/settings'
 
@@ -59,8 +60,10 @@ const labelStyle = {
 export function Onboarding({ onDone }: { onDone: () => void }) {
   const platform = usePlatform()
   const save = useSaveSettings()
+  const client = useClient()
 
   const [step, setStep] = useState(0)
+  const [gate, setGate] = useState<'idle' | 'connecting' | 'unreachable'>('idle')
   const [folders, setFolders] = useState<{ path: string; count: number }[]>([])
   const [aiSource, setAiSource] = useState<Provider | ''>('')
   const [apiKey, setApiKey] = useState('')
@@ -74,7 +77,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const mobile = isAndroid()
-  const queryClient = useQueryClient()
 
   const canNext = step === 1 ? folders.length > 0 : step === 2 ? !!aiSource : true
 
@@ -89,11 +91,25 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   }
   function removeFolder(path: string) { setFolders(folders.filter((f) => f.path !== path)) }
 
-  // Persist the engine URL as the user types; re-check the connection on blur so
-  // that if a remote engine is now reachable (and already set up), the app can
-  // leave onboarding on its own.
+  // Persist the engine URL as the user types.
   function changeEngineUrl(url: string) { setEngineUrl(url); setApiBase(url) }
-  function applyEngineUrl() { void queryClient.invalidateQueries() }
+
+  // Gate leaving the welcome step on an actual connection check: unreachable
+  // engines surface an explicit error instead of silently failing later at
+  // Finish; a reachable-but-already-configured engine skips onboarding
+  // entirely; reachable-but-unconfigured proceeds to pick a folder.
+  async function checkAndLeaveWelcome() {
+    setApiBase(engineUrl)
+    setGate('connecting')
+    try {
+      const s = await client.getSettings()
+      if (s?.vault_paths?.length) { setGate('idle'); onDone() }
+      else { setGate('idle'); setStep(1) }
+    } catch (e) {
+      if (isConnectionError(e)) setGate('unreachable')
+      else { setGate('idle'); setStep(1) }   // reachable but odd response → proceed; real issues surface inline later
+    }
+  }
 
   async function finish() {
     const provider = aiSource || 'openrouter'
@@ -130,6 +146,10 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
   function next() {
     if (!canNext || saving) return
+    if (step === 0) {
+      void checkAndLeaveWelcome()
+      return
+    }
     if (step === 4) {
       void finish()
       return
@@ -149,6 +169,12 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     : aiSource === 'openrouter'
       ? 'composed with your OpenRouter key'
       : 'using your chosen AI'
+
+  if (gate === 'connecting') return <Connecting />
+  if (gate === 'unreachable') return (
+    <Unreachable url={apiBase()} onRetry={() => void checkAndLeaveWelcome()}
+      secondary={{ label: 'Go back', onClick: () => setGate('idle') }} />
+  )
 
   return (
     <div style={{ minHeight: 'var(--app-h)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', background: color.paper }}>
@@ -177,7 +203,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 <input
                   value={engineUrl}
                   onChange={(e) => changeEngineUrl(e.target.value)}
-                  onBlur={applyEngineUrl}
                   placeholder="http://localhost:8000"
                   aria-label="engine URL"
                   style={{ width: '100%', marginTop: 6, background: color.card, border: `1px solid ${color.borderStrong}`,
