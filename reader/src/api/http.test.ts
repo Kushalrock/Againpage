@@ -1,4 +1,4 @@
-import { httpClient } from './http'
+import { httpClient, ConnectionError, isConnectionError, pingEngine } from './http'
 import { setApiBase } from './base'
 
 const calls: string[] = []
@@ -35,4 +35,29 @@ test('an explicit baseUrl argument pins the target (used by tests/fixtures)', as
   setApiBase('http://ignored:8000')
   await client.getStatus()
   expect(calls.at(-1)).toBe('http://pinned:8000/status')
+})
+
+test('throws ConnectionError when fetch rejects (transport failure)', async () => {
+  vi.stubGlobal('fetch', async () => { throw new TypeError('Failed to fetch') })
+  const client = httpClient('http://x')
+  await expect(client.getStatus()).rejects.toBeInstanceOf(ConnectionError)
+  vi.unstubAllGlobals()
+})
+
+test('throws a plain status Error (not ConnectionError) on a not-ok response', async () => {
+  vi.stubGlobal('fetch', async () => ({ ok: false, status: 500, json: async () => ({}) }) as Response)
+  const client = httpClient('http://x')
+  const err = await client.getStatus().catch((e) => e)
+  expect(err).toBeInstanceOf(Error)
+  expect(isConnectionError(err)).toBe(false)
+  expect(String(err.message)).toContain('500')
+  vi.unstubAllGlobals()
+})
+
+test('pingEngine returns true on 200, false on reject', async () => {
+  vi.stubGlobal('fetch', async () => ({ ok: true, status: 200, json: async () => ({}) }) as Response)
+  expect(await pingEngine('http://x')).toBe(true)
+  vi.stubGlobal('fetch', async () => { throw new TypeError('nope') })
+  expect(await pingEngine('http://x')).toBe(false)
+  vi.unstubAllGlobals()
 })

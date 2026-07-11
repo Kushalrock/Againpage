@@ -1,6 +1,26 @@
 import type { ApiClient } from './client'
 import { apiBase } from './base'
 
+export class ConnectionError extends Error {
+  constructor(message = 'engine unreachable') { super(message); this.name = 'ConnectionError' }
+}
+export function isConnectionError(e: unknown): boolean {
+  return e instanceof ConnectionError
+}
+
+export async function pingEngine(url: string, timeoutMs = 8000): Promise<boolean> {
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const res = await fetch(url.replace(/\/+$/, '') + '/status', { signal: ctrl.signal })
+    return res.ok
+  } catch {
+    return false
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 export function httpClient(baseUrl?: string): ApiClient {
   // Resolve the base URL per request, not once at construction. The client is
   // created a single time at app startup, but the user can change the engine
@@ -14,13 +34,18 @@ export function httpClient(baseUrl?: string): ApiClient {
   const withTimeout = async (p: string, init?: RequestInit) => {
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), TIMEOUT_MS)
+    let res: Response
     try {
-      const res = await fetch(base() + p, { ...init, signal: ctrl.signal })
-      if (!res.ok) throw new Error(`${p} → ${res.status}`)
-      return res.json()
+      res = await fetch(base() + p, { ...init, signal: ctrl.signal })
+    } catch {
+      // fetch rejects on network failure / DNS / refused, and on abort (timeout):
+      // all "can't reach the engine" — surface as a typed connection error.
+      throw new ConnectionError()
     } finally {
       clearTimeout(timer)
     }
+    if (!res.ok) throw new Error(`${p} → ${res.status}`)
+    return res.json()
   }
   const get = (p: string) => withTimeout(p)
   const put = (p: string, body: unknown) =>
