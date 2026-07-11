@@ -119,5 +119,6 @@ describe('App connection state machine', () => {
     render(<QueryClientProvider client={new QueryClient()}><AppMocked /></QueryClientProvider>)
     expect(screen.queryByText(/the newsroom isn't answering/i)).not.toBeInTheDocument()
     // onboarding welcome renders (its first-screen copy)
+    expect(await screen.findByText(/Begin/i)).toBeInTheDocument()
   })
 })

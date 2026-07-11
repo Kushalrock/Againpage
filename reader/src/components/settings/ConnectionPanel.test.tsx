@@ -54,3 +54,23 @@ test('Save reloads only when the URL changed', () => {
   expect(reload).toHaveBeenCalled()
   localStorage.clear()
 })
+
+test('re-saving the same URL with a trailing slash does not reload', () => {
+  localStorage.setItem('againpage.apiBase', 'http://old:8000')
+  const reload = vi.fn()
+  Object.defineProperty(window, 'location', { value: { reload }, configurable: true })
+  render(<ConnectionPanel />)
+  fireEvent.change(screen.getByLabelText(/engine url/i), { target: { value: 'http://old:8000/' } })
+  fireEvent.click(screen.getByText(/^save$/i))
+  expect(reload).not.toHaveBeenCalled()
+  expect(storedApiBase()).toBe('http://old:8000')
+})
+
+test('an unchanged Save shows a "Saved." confirmation', async () => {
+  localStorage.setItem('againpage.apiBase', 'http://old:8000')
+  Object.defineProperty(window, 'location', { value: { reload: vi.fn() }, configurable: true })
+  render(<ConnectionPanel />)
+  fireEvent.change(screen.getByLabelText(/engine url/i), { target: { value: 'http://old:8000' } })
+  fireEvent.click(screen.getByText(/^save$/i))
+  expect(await screen.findByText(/^saved\.$/i)).toBeInTheDocument()
+})

@@ -19,6 +19,7 @@ export function ConnectionPanel() {
   const [url, setUrl] = useState(storedApiBase())
   const [testResult, setTestResult] = useState<null | 'ok' | 'fail'>(null)
   const [testing, setTesting] = useState(false)
+  const [saved, setSaved] = useState(false)
 
   async function test() {
     setTesting(true); setTestResult(null)
@@ -27,9 +28,11 @@ export function ConnectionPanel() {
   }
   function save() {
     const next = url.trim()
-    const changed = next !== storedApiBase()
-    setApiBase(next)
+    const clean = next.replace(/\/+$/, '')
+    const changed = clean !== storedApiBase()
+    setApiBase(next)   // setApiBase already trims + strips
     if (changed) window.location.reload()   // new engine = entirely new data; hard reload for a clean slate
+    else setSaved(true)
   }
 
   return (
@@ -45,7 +48,7 @@ export function ConnectionPanel() {
       </p>
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <input aria-label="engine URL" value={url} placeholder="http://localhost:8000"
-          onChange={(e) => { setUrl(e.target.value); setTestResult(null) }}
+          onChange={(e) => { setUrl(e.target.value); setTestResult(null); setSaved(false) }}
           onKeyDown={(e) => { if (e.key === 'Enter') save() }} style={inputStyle} />
         <button type="button" onClick={() => void test()} disabled={testing}
           style={{ background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
@@ -62,6 +65,11 @@ export function ConnectionPanel() {
         <span style={{ fontSize: 13, marginTop: 8, display: 'inline-block',
           color: testResult === 'ok' ? color.ok : color.faint, fontStyle: 'italic' }}>
           {testResult === 'ok' ? 'Reached the press.' : 'No answer at that address.'}
+        </span>
+      )}
+      {saved && (
+        <span style={{ fontSize: 13, marginTop: 8, display: 'inline-block', color: color.faint, fontStyle: 'italic' }}>
+          Saved.
         </span>
       )}
     </div>
