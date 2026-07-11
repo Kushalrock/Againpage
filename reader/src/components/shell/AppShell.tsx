@@ -26,7 +26,7 @@ export function AppShell({
   const folders = settings?.vault_paths ?? []
   const latestNo = status?.issue_count ?? 0   // editions published so far → current No.
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
+    <div style={{ display: 'flex', minHeight: 'var(--app-h)' }}>
       <aside
         style={{
           flex: '0 0 240px',
@@ -35,8 +35,8 @@ export function AppShell({
           display: 'flex',
           flexDirection: 'column',
           position: 'sticky',
-          top: 0,
-          height: '100vh',
+          top: 'env(safe-area-inset-top)',
+          height: 'var(--app-h)',
           padding: '26px 0',
         }}
       >

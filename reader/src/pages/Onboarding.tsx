@@ -151,7 +151,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       : 'using your chosen AI'
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', background: color.paper }}>
+    <div style={{ minHeight: 'var(--app-h)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '48px 24px', background: color.paper }}>
       <div style={{ width: '100%', maxWidth: 560 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 40 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -22,7 +22,7 @@ export function NoteDrawer({ title, onClose }: { title: string | null; onClose: 
       <aside
         aria-hidden={!open}
         style={{
-          position: 'fixed', top: 0, right: 0, height: '100vh', width: 'min(560px, 92vw)',
+          position: 'fixed', top: 'env(safe-area-inset-top)', right: 0, height: 'var(--app-h)', width: 'min(560px, 92vw)',
           background: color.paper, boxShadow: '-14px 0 40px #1C120026', zIndex: 41,
           transform: open ? 'translateX(0)' : 'translateX(100%)', transition: 'transform .28s ease',
           display: 'flex', flexDirection: 'column',
