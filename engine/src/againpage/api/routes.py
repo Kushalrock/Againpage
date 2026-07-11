@@ -1,5 +1,6 @@
 from datetime import date, datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from againpage.storage.repository import Repository
@@ -22,6 +23,7 @@ def _settings_response(s, count: int) -> SettingsResponse:
     return SettingsResponse(vault_paths=s.vault_paths, excluded_paths=s.excluded_paths,
         profile_text=s.profile_text or "", cadence_days=s.cadence_days,
         delivery_time=s.delivery_time.strftime("%H:%M") if s.delivery_time else "07:00",
+        timezone=s.timezone or "UTC",
         reading_min=s.reading_min, notes_per_issue=s.notes_per_issue, provider=s.provider,
         ollama_endpoint=s.ollama_endpoint, embed_model=s.embed_model or "",
         summary_model=s.summary_model or "", writer_model=s.writer_model or "",
@@ -58,6 +60,11 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
     async def trigger():
         if queue is None:
             raise HTTPException(503, "queue unavailable")
+        # Don't queue a second edition while one is already queued or composing
+        # (manual click during an auto or manual generation) — it would waste a
+        # provider call and race to insert a duplicate issue.
+        if "generate" in await queue.active_types():
+            raise HTTPException(409, "an edition is already being composed")
         job_id = await queue.enqueue("generate", {})
         return {"job_id": str(job_id)}
 
@@ -101,6 +108,11 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
     @r.put("/settings")
     async def put_settings(patch: dict):
         uid = await repo.ensure_local_user()
+        if "timezone" in patch:
+            try:
+                ZoneInfo(str(patch["timezone"]))
+            except Exception:  # noqa: BLE001
+                raise HTTPException(422, f"unknown timezone: {patch['timezone']!r}")
         s = await repo.upsert_settings(uid, patch)
         return _settings_response(s, _count(s))
 
@@ -171,7 +183,7 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
         next_edition_at = None
         if indexed and s and s.delivery_time:
             nd = Scheduler(repo, queue).next_due(
-                s, now=datetime.now(), last_issue_date=(latest.issue_date if latest else None))
+                s, now=datetime.now(timezone.utc), last_issue_date=(latest.issue_date if latest else None))
             next_edition_at = nd.isoformat()
         return AppStatus(
             indexed=indexed, theme_count=len(themes), note_count=len(notes), issue_count=len(issues),

@@ -1,7 +1,7 @@
 from __future__ import annotations
 import asyncio
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from againpage.core.models import SettingsRow, NewIssue
 from againpage.queue.queue import Queue, Job
 from againpage.storage.repository import Repository
@@ -79,13 +79,14 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     while True:
         # Scheduler heartbeat — must run every ~60s regardless of queue activity,
         # so scheduled editions fire even when the queue is idle (the normal
-        # state). Local (naive) now: delivery_time is the user's local wall-clock
-        # and the cadence day-gap is measured in local days, not UTC. A tick
-        # error must not kill the worker loop.
+        # state). Pass an aware UTC instant; the scheduler converts it to the
+        # user's configured timezone, so delivery_time and the cadence day-gap
+        # are evaluated against the user's local wall clock even on a UTC server.
+        # A tick error must not kill the worker loop.
         if _t.monotonic() - last_tick > 60:
             last_tick = _t.monotonic()
             try:
-                await scheduler.tick(now=datetime.now())
+                await scheduler.tick(now=datetime.now(timezone.utc))
             except Exception:  # noqa: BLE001
                 log.exception("scheduler tick failed")
 

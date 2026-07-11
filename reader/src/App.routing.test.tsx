@@ -40,7 +40,7 @@ test('Reader compose-themes CTA navigates to Settings when not indexed', async (
   }
   const notIndexedSettings: SettingsResponse = {
     vault_paths: ['~/Documents/Athenaeum'], excluded_paths: [], profile_text: '',
-    cadence_days: 1, delivery_time: '07:00', reading_min: 7, notes_per_issue: 3,
+    cadence_days: 1, delivery_time: '07:00', timezone: 'UTC', reading_min: 7, notes_per_issue: 3,
     provider: 'openrouter', ollama_endpoint: '',
     embed_model: 'openai/text-embedding-3-small', summary_model: 'openai/gpt-4o-mini',
     writer_model: 'anthropic/claude-3.5-sonnet', vault_note_count: 1284,

@@ -48,6 +48,7 @@ def test_active_jobs_reported_and_cancellable():
         assert client.get("/status").json()["active_jobs"] == []
         assert client.post("/trigger").json()["job_id"]                 # enqueue a generate job
         assert "generate" in client.get("/status").json()["active_jobs"]
+        assert client.post("/trigger").status_code == 409               # blocked: one is already composing
         assert client.post("/jobs/cancel?type=generate").json()["cancelled"] >= 1
         assert "generate" not in client.get("/status").json()["active_jobs"]
 

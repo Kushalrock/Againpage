@@ -1,7 +1,7 @@
 export type Provider = "openrouter" | "ollama" | "custom";
 export interface Settings {
   vault_paths: string[]; excluded_paths: string[]; profile_text: string;
-  cadence_days: number; delivery_time: string; reading_min: number; notes_per_issue: number;
+  cadence_days: number; delivery_time: string; timezone: string; reading_min: number; notes_per_issue: number;
   provider: Provider; ollama_endpoint: string;
   embed_model: string; summary_model: string; writer_model: string;
   has_openrouter_key?: boolean; has_ollama_key?: boolean;   // returned: whether a key is saved

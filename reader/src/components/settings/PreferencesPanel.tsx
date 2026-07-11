@@ -39,9 +39,16 @@ export function PreferencesPanel({
     onChange({ cadence_days: v })
   }
 
-  // Live preview of when the next edition lands, from the delivery time + gap.
-  const target = nextEditionAt(settings.delivery_time, days, status.data?.latest_issue_date ?? null, new Date())
+  // Live preview of when the next edition lands. Prefer the engine's
+  // next_edition_at (timezone-aware, computed in the user's configured zone);
+  // fall back to a client-side projection before status has loaded.
+  const projected = nextEditionAt(settings.delivery_time, days, status.data?.latest_issue_date ?? null, new Date())
+  const target = status.data?.next_edition_at ?? projected
   const cd = useCountdown(target)
+
+  const zones: string[] =
+    typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
+  const deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone
 
   return (
     <div style={{ padding: '28px 0', borderBottom: `1px solid ${color.border}` }}>
@@ -99,6 +106,35 @@ export function PreferencesPanel({
             onChange={(e) => onChange({ delivery_time: e.target.value })}
             style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
               padding: '10px 14px', fontSize: 15, color: color.inkStrong, fontFamily: "'Source Code Pro', monospace" }} />
+        </div>
+
+        <div>
+          <div style={{ fontSize: 14, color: color.muted, marginBottom: 10 }}>Timezone</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {zones.length > 0 ? (
+              <select aria-label="Timezone" value={settings.timezone || 'UTC'}
+                onChange={(e) => onChange({ timezone: e.target.value })}
+                style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+                  padding: '10px 14px', fontSize: 15, color: color.inkStrong, maxWidth: '100%' }}>
+                {zones.map((z) => <option key={z} value={z}>{z}</option>)}
+              </select>
+            ) : (
+              <input aria-label="Timezone" value={settings.timezone || 'UTC'} placeholder="Asia/Kolkata"
+                onChange={(e) => onChange({ timezone: e.target.value })}
+                style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+                  padding: '10px 14px', fontSize: 15, color: color.inkStrong, fontFamily: "'Source Code Pro', monospace" }} />
+            )}
+            {deviceZone && settings.timezone !== deviceZone && (
+              <button type="button" onClick={() => onChange({ timezone: deviceZone })}
+                style={{ background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+                  padding: '9px 14px', fontSize: 13, color: color.muted, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                Use this device ({deviceZone})
+              </button>
+            )}
+          </div>
+          <div style={{ fontSize: 13, color: color.faint, marginTop: 8, fontStyle: 'italic' }}>
+            Editions are scheduled at your delivery time in this zone — set it to where you are, not the server.
+          </div>
         </div>
       </div>
     </div>

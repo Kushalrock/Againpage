@@ -318,6 +318,7 @@ const SETTINGS: Settings = {
   profile_text: '',
   cadence_days: 1,
   delivery_time: '07:00',
+  timezone: 'UTC',
   reading_min: 7,
   notes_per_issue: 3,
   provider: 'openrouter',

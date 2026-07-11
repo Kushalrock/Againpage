@@ -13,7 +13,7 @@ log = logging.getLogger(__name__)
 
 _SETTINGS_COLS = ("user_id","vault_paths","excluded_paths","profile_text","cadence_days",
     "delivery_time","reading_min","notes_per_issue","provider","ollama_endpoint",
-    "embed_model","summary_model","writer_model","openrouter_key","ollama_key")
+    "embed_model","summary_model","writer_model","timezone","openrouter_key","ollama_key")
 
 # Advisory-lock key serialising the embedding-dimension DDL across processes.
 _EMBED_DIM_LOCK = 0x41474E50  # "AGNP"

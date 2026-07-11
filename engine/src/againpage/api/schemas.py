@@ -32,6 +32,7 @@ class SettingsResponse(BaseModel):
     profile_text: str
     cadence_days: int
     delivery_time: str
+    timezone: str
     reading_min: int
     notes_per_issue: int
     provider: str

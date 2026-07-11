@@ -58,6 +58,9 @@ class SettingsRow:
     embed_model: str | None
     summary_model: str | None
     writer_model: str | None
+    # IANA timezone name (e.g. "Asia/Kolkata"). The scheduler interprets
+    # delivery_time and the cadence day-gap in this zone. Defaults to UTC.
+    timezone: str = "UTC"
     openrouter_key: str | None = None
     ollama_key: str | None = None
 
