@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { storedApiBase, setApiBase } from '../../api/base'
+import { pingEngine } from '../../api/http'
 import { color, font } from '../../theme/tokens'
 
 const inputStyle = {
@@ -17,13 +17,19 @@ const inputStyle = {
  */
 export function ConnectionPanel() {
   const [url, setUrl] = useState(storedApiBase())
-  const [saved, setSaved] = useState(false)
-  const queryClient = useQueryClient()
+  const [testResult, setTestResult] = useState<null | 'ok' | 'fail'>(null)
+  const [testing, setTesting] = useState(false)
 
+  async function test() {
+    setTesting(true); setTestResult(null)
+    const ok = await pingEngine(url.trim() || 'http://localhost:8000')
+    setTestResult(ok ? 'ok' : 'fail'); setTesting(false)
+  }
   function save() {
-    setApiBase(url)
-    setSaved(true)
-    void queryClient.invalidateQueries()
+    const next = url.trim()
+    const changed = next !== storedApiBase()
+    setApiBase(next)
+    if (changed) window.location.reload()   // new engine = entirely new data; hard reload for a clean slate
   }
 
   return (
@@ -38,23 +44,24 @@ export function ConnectionPanel() {
         or the reader can’t reach the engine and screens won’t load.
       </p>
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <input
-          aria-label="engine URL"
-          value={url}
-          onChange={(e) => { setUrl(e.target.value); setSaved(false) }}
-          onKeyDown={(e) => { if (e.key === 'Enter') save() }}
-          placeholder="http://localhost:8000"
-          style={inputStyle}
-        />
+        <input aria-label="engine URL" value={url} placeholder="http://localhost:8000"
+          onChange={(e) => { setUrl(e.target.value); setTestResult(null) }}
+          onKeyDown={(e) => { if (e.key === 'Enter') save() }} style={inputStyle} />
+        <button type="button" onClick={() => void test()} disabled={testing}
+          style={{ background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+            padding: '10px 18px', fontSize: 14, color: color.muted, cursor: 'pointer', fontFamily: font.body }}>
+          {testing ? 'Testing…' : 'Test'}
+        </button>
         <button type="button" onClick={save}
           style={{ background: color.dark, border: `1px solid ${color.dark}`, borderRadius: 5,
             padding: '10px 22px', fontSize: 14, color: color.paper, cursor: 'pointer', fontFamily: font.body }}>
           Save
         </button>
       </div>
-      {saved && (
-        <span style={{ fontSize: 13, color: color.muted, fontStyle: 'italic', display: 'inline-block', marginTop: 8 }}>
-          Saved. Reload the app if data doesn’t refresh.
+      {testResult && (
+        <span style={{ fontSize: 13, marginTop: 8, display: 'inline-block',
+          color: testResult === 'ok' ? color.ok : color.faint, fontStyle: 'italic' }}>
+          {testResult === 'ok' ? 'Reached the press.' : 'No answer at that address.'}
         </span>
       )}
     </div>
