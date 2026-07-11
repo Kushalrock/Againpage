@@ -1,5 +1,6 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { vi } from 'vitest'
 import { ClientContext } from './api/queries'
 import { fixtureClient, ARCHIVE, AMOR_FATI } from './api/fixtures'
 import type { ApiClient } from './api/client'
@@ -66,4 +67,57 @@ test('Reader compose-themes CTA navigates to Settings when not indexed', async (
   // Assert on the Settings *page* heading (h1), not the always-present sidebar nav button,
   // so this only passes once navigation has actually occurred.
   expect(await screen.findByRole('heading', { name: /^Settings$/, level: 1 })).toBeInTheDocument()
+})
+
+// These tests steer `useSettings()`'s return value directly via vi.doMock, so
+// they can exercise the Connecting/Unreachable/Onboarding gate in App without
+// a real ApiClient. vi.doMock is NOT hoisted, so each test must resetModules
+// + doMock BEFORE its dynamic `await import('./App')`, and doUnmock after so
+// the mock doesn't leak into the statically-imported `App` used by the tests
+// above (which capture their own binding at file-load time, before any of
+// this runs, so they're unaffected regardless — but we clean up to be safe
+// for any future tests added below this block).
+describe('App connection state machine', () => {
+  afterEach(() => {
+    vi.doUnmock('./api/queries')
+    vi.resetModules()
+    localStorage.clear()
+  })
+
+  test('shows Connecting while settings load', async () => {
+    vi.resetModules()
+    vi.doMock('./api/queries', async (orig) => {
+      const a = await (orig() as Promise<Record<string, unknown>>)
+      return { ...a, useSettings: () => ({ isLoading: true }), useStatus: () => ({ data: undefined }) }
+    })
+    const { default: AppMocked } = await import('./App')
+    render(<QueryClientProvider client={new QueryClient()}><AppMocked /></QueryClientProvider>)
+    expect(screen.getByText(/reaching the newsroom/i)).toBeInTheDocument()
+  })
+
+  test('shows Unreachable when settings error and a URL was saved', async () => {
+    localStorage.setItem('againpage.apiBase', 'http://saved:8000')
+    vi.resetModules()
+    vi.doMock('./api/queries', async (orig) => {
+      const a = await (orig() as Promise<Record<string, unknown>>)
+      return { ...a, useSettings: () => ({ isError: true, data: undefined, refetch: vi.fn() }), useStatus: () => ({ data: undefined }) }
+    })
+    const { default: AppMocked } = await import('./App')
+    render(<QueryClientProvider client={new QueryClient()}><AppMocked /></QueryClientProvider>)
+    expect(screen.getByText(/the newsroom isn't answering/i)).toBeInTheDocument()
+    expect(screen.getByText('http://saved:8000')).toBeInTheDocument()
+  })
+
+  test('a settings error with NO saved URL falls through to onboarding', async () => {
+    localStorage.clear()
+    vi.resetModules()
+    vi.doMock('./api/queries', async (orig) => {
+      const a = await (orig() as Promise<Record<string, unknown>>)
+      return { ...a, useSettings: () => ({ isError: true, data: undefined, refetch: vi.fn() }), useStatus: () => ({ data: undefined }) }
+    })
+    const { default: AppMocked } = await import('./App')
+    render(<QueryClientProvider client={new QueryClient()}><AppMocked /></QueryClientProvider>)
+    expect(screen.queryByText(/the newsroom isn't answering/i)).not.toBeInTheDocument()
+    // onboarding welcome renders (its first-screen copy)
+  })
 })

@@ -5,14 +5,17 @@ import { Archive } from './pages/Archive'
 import { Settings } from './pages/Settings'
 import { Onboarding } from './pages/Onboarding'
 import { useSettings } from './api/queries'
+import { Connecting, Unreachable } from './components/ConnectionStates'
+import { apiBase, storedApiBase } from './api/base'
 
 type Screen = 'reader' | 'archive' | 'settings'
 
 export default function App() {
-  const { data: settings, isLoading } = useSettings()
+  const { data: settings, isLoading, isError, refetch } = useSettings()
   const [screen, setScreen] = useState<Screen>('reader')
   const [issueId, setIssueId] = useState<string | null>(null)
   const [onboarded, setOnboarded] = useState(false)
+  const [reOnboard, setReOnboard] = useState(false)
 
   // Navigating via the sidebar clears any selected archived edition, so the
   // Reader falls back to today's.
@@ -21,9 +24,20 @@ export default function App() {
     setScreen(s)
   }
 
-  if (isLoading) return <div style={{ padding: 48 }}>Loading…</div>
-  const needsOnboarding = !onboarded && !settings?.vault_paths?.length
-  if (needsOnboarding) return <Onboarding onDone={() => { setOnboarded(true); setScreen('reader') }} />
+  if (isLoading) return <Connecting />
+  if (isError && !settings && !reOnboard && storedApiBase()) {
+    return (
+      <Unreachable
+        url={apiBase()}
+        onRetry={() => { void refetch() }}
+        secondary={{ label: 'Point to another press', onClick: () => setReOnboard(true) }}
+      />
+    )
+  }
+  const needsOnboarding = reOnboard || (!onboarded && !settings?.vault_paths?.length)
+  if (needsOnboarding) {
+    return <Onboarding onDone={() => { setOnboarded(true); setReOnboard(false); setScreen('reader') }} />
+  }
   return (
     <AppShell active={screen} onNavigate={(s) => navigate(s as Screen)}>
       {screen === 'reader' && <Reader issueId={issueId} onNavigate={(s) => navigate(s as Screen)} />}
