@@ -54,3 +54,42 @@ test('timezone control emits timezone on change', () => {
   fireEvent.change(tz, { target: { value } })
   expect(patch).toEqual({ timezone: value })
 })
+
+import { vi } from 'vitest'
+// notifySupported is left as the real implementation (a plain UA check, no
+// native plugin import) so it correctly reflects androidUA() below; only the
+// plugin-backed calls are mocked so the Tauri notification plugin is never
+// loaded in jsdom.
+vi.mock('../../platform/notify', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../platform/notify')>()),
+  ensureNotifyPermission: vi.fn(async () => true),
+  scheduleEditionReady: vi.fn(async () => {}),
+  cancelEditionReady: vi.fn(async () => {}),
+}))
+import * as notify from '../../platform/notify'
+
+function androidUA() {
+  Object.defineProperty(navigator, 'userAgent', {
+    value: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit', configurable: true })
+}
+
+test('notify toggle is hidden off Android', () => {
+  wrap(() => {})   // jsdom default UA (not Android)
+  expect(screen.queryByLabelText(/notify me when an edition is ready/i)).not.toBeInTheDocument()
+})
+
+test('turning the notify toggle on requests permission and persists', async () => {
+  const realUA = navigator.userAgent
+  androidUA()
+  try {
+    wrap(() => {})
+    const toggle = screen.getByLabelText(/notify me when an edition is ready/i)
+    fireEvent.click(toggle)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(notify.ensureNotifyPermission).toHaveBeenCalled()
+    expect(localStorage.getItem('againpage.notifyOnReady')).toBe('1')
+  } finally {
+    Object.defineProperty(navigator, 'userAgent', { value: realUA, configurable: true })
+    localStorage.clear()
+  }
+})

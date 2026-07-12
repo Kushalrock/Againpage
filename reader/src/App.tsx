@@ -5,14 +5,17 @@ import { Archive } from './pages/Archive'
 import { Favourites } from './pages/Favourites'
 import { Settings } from './pages/Settings'
 import { Onboarding } from './pages/Onboarding'
-import { useSettings } from './api/queries'
+import { useSettings, useStatus } from './api/queries'
 import { Connecting, Unreachable } from './components/ConnectionStates'
 import { apiBase, storedApiBase } from './api/base'
+import { useEditionNotifications } from './hooks/useEditionNotifications'
 
 type Screen = 'reader' | 'archive' | 'favourites' | 'settings'
 
 export default function App() {
   const { data: settings, isLoading, isError, refetch } = useSettings()
+  const status = useStatus()
+  useEditionNotifications(status.data?.next_edition_at ?? null)
   const [screen, setScreen] = useState<Screen>('reader')
   const [issueId, setIssueId] = useState<string | null>(null)
   const [onboarded, setOnboarded] = useState(false)

@@ -38,7 +38,10 @@ export function useSaveSettings() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (patch: SettingsPatch) => client.saveSettings(patch),
-    onSuccess: (data) => { queryClient.setQueryData(['settings'], data) },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['settings'], data)
+      queryClient.invalidateQueries({ queryKey: ['status'] })   // delivery/cadence/timezone move next_edition_at
+    },
   })
 }
 export function useStatus(opts?: { refetchInterval?: number | false }) {

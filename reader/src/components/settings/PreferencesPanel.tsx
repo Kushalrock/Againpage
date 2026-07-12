@@ -4,6 +4,8 @@ import { useStatus } from '../../api/queries'
 import { useCountdown, nextEditionAt } from '../../lib/countdown'
 import { color, font } from '../../theme/tokens'
 import type { Settings, SettingsPatch } from '../../types/settings'
+import { notifySupported, ensureNotifyPermission, scheduleEditionReady, cancelEditionReady } from '../../platform/notify'
+import { editionNotifyTime, notifyEnabled, setNotifyEnabled } from '../../lib/notifySchedule'
 
 const NOTES_OPTIONS = [2, 3, 4, 5]
 
@@ -32,6 +34,22 @@ export function PreferencesPanel({
   const status = useStatus()
   // Local state so the day input edits smoothly (server round-trip doesn't snap it back).
   const [days, setDays] = useState(settings.cadence_days)
+  const [notify, setNotify] = useState(notifyEnabled())
+  const [notifyHint, setNotifyHint] = useState('')
+
+  async function toggleNotify(on: boolean) {
+    if (on) {
+      const granted = await ensureNotifyPermission()
+      if (!granted) { setNotify(false); setNotifyHint('Enable notifications for Againpage in Android settings to use this.'); return }
+      setNotifyHint('')
+      setNotifyEnabled(true); setNotify(true)
+      const fireAt = editionNotifyTime(status.data?.next_edition_at ?? null, 5, Date.now())
+      if (fireAt) void scheduleEditionReady(fireAt)
+    } else {
+      setNotifyEnabled(false); setNotify(false); setNotifyHint('')
+      void cancelEditionReady()
+    }
+  }
 
   function setCadence(n: number) {
     const v = Math.max(1, Math.min(90, Math.round(n) || 1))
@@ -136,6 +154,19 @@ export function PreferencesPanel({
             Editions are scheduled at your delivery time in this zone — set it to where you are, not the server.
           </div>
         </div>
+
+        {notifySupported() && (
+          <div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
+              <input type="checkbox" aria-label="Notify me when an edition is ready"
+                checked={notify} onChange={(e) => void toggleNotify(e.target.checked)} />
+              <span style={{ fontSize: 14, color: color.muted }}>Notify me when an edition is ready</span>
+            </label>
+            {notifyHint && (
+              <div style={{ fontSize: 13, color: color.faint, marginTop: 8, fontStyle: 'italic' }}>{notifyHint}</div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
