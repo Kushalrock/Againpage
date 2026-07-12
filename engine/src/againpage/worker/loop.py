@@ -64,10 +64,15 @@ async def handle_ingest(job: Job, *, repo, provider, queue, settings) -> None:
         counts = await ingest_vault(settings.vault_paths, repo=repo, provider=provider,
                                     settings=settings, user_id=settings.user_id, cancelled=cancelled)
         if not counts.get("cancelled"):
+            await repo.set_sync_state(settings.user_id,
+                scanned=counts.get("scanned", 0),
+                synced=counts.get("scanned", 0) - counts.get("failed", 0),
+                failed=counts.get("failed", 0))
             await queue.enqueue("cluster", {})   # chain a re-cluster after a full-vault ingest
 
 async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     import time as _t
+    from againpage.scheduler.sync import sync_due
     queue = Queue(pool)
     repo = Repository(pool)
     scheduler = Scheduler(repo, queue)
@@ -76,6 +81,20 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     if reclaimed:
         log.info("requeued %d orphaned job(s) from a previous run", reclaimed)
     log.info("worker ready — polling the job queue (Ctrl+C to stop)")
+    # Best-effort file watcher(s) — may not fire on Docker/network FS; the
+    # periodic below is the reliable path. Never crash the worker if it fails.
+    try:
+        s0 = await repo.get_settings(await repo.ensure_local_user())
+        if s0 and s0.vault_paths:
+            from againpage.vault.watcher import start_watcher
+            for vp in s0.vault_paths:
+                try:
+                    start_watcher(vp, queue)
+                except Exception:  # noqa: BLE001
+                    log.warning("vault watcher failed to start for %s", vp, exc_info=True)
+    except Exception:  # noqa: BLE001
+        log.warning("watcher setup skipped", exc_info=True)
+    last_sync = _t.monotonic()
     while True:
         # Scheduler heartbeat — must run every ~60s regardless of queue activity,
         # so scheduled editions fire even when the queue is idle (the normal
@@ -89,6 +108,15 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
                 await scheduler.tick(now=datetime.now(timezone.utc))
             except Exception:  # noqa: BLE001
                 log.exception("scheduler tick failed")
+
+        if _t.monotonic() - last_sync > 60:   # check each minute; enqueue when the interval elapses
+            try:
+                s = await repo.get_settings(await repo.ensure_local_user())
+                if s and s.vault_paths and sync_due(s.sync_interval_minutes, _t.monotonic() - last_sync):
+                    await queue.enqueue("ingest", {})
+                    last_sync = _t.monotonic()
+            except Exception:  # noqa: BLE001
+                log.exception("periodic sync tick failed")
 
         job = await queue.claim()
         if job is None:
