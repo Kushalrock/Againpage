@@ -85,7 +85,9 @@ export function Archive({ onOpen, onNavigate }: { onOpen: (id: string) => void; 
             {g.label}
           </div>
           {g.items.map((it) => (
-            <button key={it.id} onClick={() => onOpen(it.id)} style={{
+            <div key={it.id} role="button" tabIndex={0} onClick={() => onOpen(it.id)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(it.id) } }}
+              style={{
               display: 'block', width: '100%', textAlign: 'left', background: 'transparent', border: 'none',
               borderTop: `1px solid ${color.border}`, padding: '22px 4px', cursor: 'pointer',
             }}>
@@ -121,7 +123,7 @@ export function Archive({ onOpen, onNavigate }: { onOpen: (id: string) => void; 
                   </div>
                 </div>
               </div>
-            </button>
+            </div>
           ))}
         </div>
       ))}

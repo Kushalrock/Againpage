@@ -39,6 +39,16 @@ test('populated → grouped archive + onOpen', async () => {
   fireEvent.click(screen.getByText(/Amor Fati/i))
   expect(opened.length).toBe(1)
 })
+test('row is a role=button div and opens edition on Enter keydown', async () => {
+  const opened: string[] = []
+  wrap(mk(S({ issue_count: 7 }), true), (id) => opened.push(id))
+  await screen.findByText(/Amor Fati/i)
+  const row = screen.getByText(/Amor Fati/i).closest('[role="button"]') as HTMLElement
+  expect(row).toBeInTheDocument()
+  expect(row.tagName).not.toBe('BUTTON')
+  fireEvent.keyDown(row, { key: 'Enter' })
+  expect(opened.length).toBe(1)
+})
 test('header spells out the real edition count, not a hardcoded number', async () => {
   wrap(mk(S({}), true))                                    // ARCHIVE.total === 7
   expect(await screen.findByText(/Seven mornings, and counting\./i)).toBeInTheDocument()
