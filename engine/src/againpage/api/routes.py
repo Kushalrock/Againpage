@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from againpage.storage.repository import Repository
 from againpage.core.models import IssueContent, IssueRow, SettingsRow
+from againpage.version import ENGINE_VERSION, MIN_READER_VERSION
 from againpage.api.schemas import (IssueResponse, ArchiveItem, ArchiveGroup, ArchiveResponse,
     SettingsResponse, ProviderTestRequest, ProviderTestResult, VaultStatus, NoteExpansion,
     IssueFlagsPatch, IssueFlags)
@@ -32,7 +33,8 @@ def _settings_response(s, count: int) -> SettingsResponse:
         note_expand_words=s.note_expand_words,
         sync_interval_minutes=s.sync_interval_minutes,
         vault_note_count=count,
-        has_openrouter_key=bool(s.openrouter_key), has_ollama_key=bool(s.ollama_key))
+        has_openrouter_key=bool(s.openrouter_key), has_ollama_key=bool(s.ollama_key),
+        engine_version=ENGINE_VERSION, min_reader_version=MIN_READER_VERSION)
 
 def _count(s) -> int:
     if not s.vault_paths:

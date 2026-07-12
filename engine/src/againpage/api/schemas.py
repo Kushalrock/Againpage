@@ -58,6 +58,8 @@ class SettingsResponse(BaseModel):
     vault_note_count: int
     has_openrouter_key: bool = False   # keys are write-only; expose only whether one is saved
     has_ollama_key: bool = False
+    engine_version: str = ""
+    min_reader_version: str = ""
 
 class ProviderTestRequest(BaseModel):
     provider: str
