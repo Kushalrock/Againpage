@@ -79,7 +79,7 @@ test('Finish surfaces an error and stays put when the save fails (unreachable en
   fireEvent.click(screen.getByText(/Continue/i))                           // → step 3
   fireEvent.click(screen.getByText(/Continue/i))                           // → step 4
   fireEvent.click(screen.getByText(/Finish/i))
-  expect(await screen.findByRole('alert')).toHaveTextContent(/couldn't save/i)  // shown, not silent
+  expect(await screen.findByText(/the newsroom isn't answering/i)).toBeInTheDocument()  // full-screen, not silent
 })
 
 test('hides the native picker on Android but keeps the typed path (step 1)', async () => {
@@ -110,6 +110,18 @@ test('welcome step shows Unreachable on a connection error, and Go back returns'
   expect(await screen.findByText(/the newsroom isn't answering/i)).toBeInTheDocument()
   fireEvent.click(screen.getByText(/go back/i))
   expect(screen.getByLabelText(/engine URL/i)).toBeInTheDocument()   // back on the welcome step
+})
+
+test('welcome step shows Unreachable on a reachable-but-erroring engine (e.g. 500)', async () => {
+  const qc = new QueryClient()
+  const failing: ApiClient = { ...fixtureClient, getSettings: async () => { throw new Error('/settings → 500') } }
+  render(<QueryClientProvider client={qc}>
+    <ClientContext.Provider value={failing}>
+      <PlatformContext.Provider value={fakePlatform()}>
+        <Onboarding onDone={() => {}} />
+      </PlatformContext.Provider></ClientContext.Provider></QueryClientProvider>)
+  fireEvent.click(screen.getByText(/Begin/i))
+  expect(await screen.findByText(/the newsroom isn't answering/i)).toBeInTheDocument()
 })
 
 test('welcome step advances to the folder step when the engine is reachable + unconfigured', async () => {

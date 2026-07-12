@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useSaveSettings, useClient } from '../api/queries'
 import { apiBase, setApiBase, storedApiBase } from '../api/base'
 import { usePlatform } from '../platform'
@@ -7,7 +7,6 @@ import { lengthLabel } from '../lib/readingLength'
 import { PROVIDER_DEFAULTS } from '../lib/providerDefaults'
 import { Logo } from '../components/Logo'
 import { Connecting, Unreachable } from '../components/ConnectionStates'
-import { isConnectionError } from '../api/http'
 import { color, font } from '../theme/tokens'
 import type { Provider, SettingsPatch } from '../types/settings'
 
@@ -75,8 +74,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [engineUrl, setEngineUrl] = useState(storedApiBase())
   const [pathInput, setPathInput] = useState('')
   const [saving, setSaving] = useState(false)
-  const [saveError, setSaveError] = useState('')
   const mobile = isAndroid()
+  const gateRetry = useRef<() => void>(() => void checkAndLeaveWelcome())
 
   const canNext = step === 1 ? folders.length > 0 : step === 2 ? !!aiSource : true
 
@@ -105,9 +104,11 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       const s = await client.getSettings()
       if (s?.vault_paths?.length) { setGate('idle'); onDone() }
       else { setGate('idle'); setStep(1) }
-    } catch (e) {
-      if (isConnectionError(e)) setGate('unreachable')
-      else { setGate('idle'); setStep(1) }   // reachable but odd response → proceed; real issues surface inline later
+    } catch {
+      // Any /settings failure — unreachable OR a reachable error (e.g. 500) —
+      // is foundational: surface the full-screen error, don't proceed.
+      gateRetry.current = () => void checkAndLeaveWelcome()
+      setGate('unreachable')
     }
   }
 
@@ -129,16 +130,14 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       else patch.openrouter_key = apiKey.trim()
     }
     setSaving(true)
-    setSaveError('')
     try {
       await save.mutateAsync(patch)
       setStep(5)
     } catch {
-      // The save couldn't reach (or was rejected by) the engine. Surface it
-      // instead of silently doing nothing — otherwise "Finish" looks dead.
-      setSaveError(
-        `Couldn't save to the engine at ${apiBase()}. Check it's running and the ` +
-        `Engine URL (welcome step) is correct, then try Finish again.`)
+      // A /settings save failure (unreachable or rejected) is foundational —
+      // show the full-screen error with Finish as the retry.
+      gateRetry.current = () => void finish()
+      setGate('unreachable')
     } finally {
       setSaving(false)
     }
@@ -172,7 +171,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
   if (gate === 'connecting') return <Connecting />
   if (gate === 'unreachable') return (
-    <Unreachable url={apiBase()} onRetry={() => void checkAndLeaveWelcome()}
+    <Unreachable url={apiBase()} onRetry={() => gateRetry.current()}
       secondary={{ label: 'Go back', onClick: () => setGate('idle') }} />
   )
 
@@ -456,13 +455,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             </div>
           )}
         </div>
-
-        {saveError && (
-          <div role="alert" style={{ marginTop: 20, background: color.card, border: `1px solid ${color.accent}`,
-            borderRadius: 6, padding: '12px 16px', fontSize: 14, lineHeight: 1.5, color: color.accent }}>
-            {saveError}
-          </div>
-        )}
 
         {showNav && (
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 36, paddingTop: 24, borderTop: `1px solid ${color.border}` }}>
