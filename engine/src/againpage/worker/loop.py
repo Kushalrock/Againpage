@@ -95,6 +95,7 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     except Exception:  # noqa: BLE001
         log.warning("watcher setup skipped", exc_info=True)
     last_sync = _t.monotonic()
+    last_check = 0.0
     while True:
         # Scheduler heartbeat — must run every ~60s regardless of queue activity,
         # so scheduled editions fire even when the queue is idle (the normal
@@ -109,7 +110,8 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
             except Exception:  # noqa: BLE001
                 log.exception("scheduler tick failed")
 
-        if _t.monotonic() - last_sync > 60:   # check each minute; enqueue when the interval elapses
+        if _t.monotonic() - last_check > 60:
+            last_check = _t.monotonic()
             try:
                 s = await repo.get_settings(await repo.ensure_local_user())
                 if s and s.vault_paths and sync_due(s.sync_interval_minutes, _t.monotonic() - last_sync):
