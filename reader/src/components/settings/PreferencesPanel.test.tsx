@@ -18,11 +18,25 @@ function wrap(onChange: (p: SettingsPatch) => void, settings: Settings = base) {
     </ClientContext.Provider></QueryClientProvider>)
 }
 
-test('time picker emits delivery_time on change', () => {
-  let patch: SettingsPatch | null = null
-  wrap((p) => { patch = p })
+test('delivery time + timezone do not auto-save; Save persists both together', () => {
+  const patches: SettingsPatch[] = []
+  wrap((p) => patches.push(p))
+
+  const save = screen.getByRole('button', { name: /save delivery time/i })
+  expect(save).toBeDisabled()                                   // nothing changed yet
+
   fireEvent.change(screen.getByLabelText(/delivery time/i), { target: { value: '09:30' } })
-  expect(patch).toEqual({ delivery_time: '09:30' })
+  expect(patches).toHaveLength(0)                               // editing the time alone saves nothing
+  expect(save).not.toBeDisabled()                              // ...but the button wakes up
+
+  const tz = screen.getByLabelText(/timezone/i) as HTMLSelectElement
+  const opt = Array.from(tz.querySelectorAll('option')).map((o) => o.value).find((v) => v && v !== tz.value)
+  const zone = opt ?? 'Asia/Kolkata'
+  fireEvent.change(tz, { target: { value: zone } })
+  expect(patches).toHaveLength(0)                               // editing timezone alone saves nothing
+
+  fireEvent.click(save)
+  expect(patches).toEqual([{ delivery_time: '09:30', timezone: zone }])   // one patch, both fields
 })
 
 test('day setter emits cadence_days and steppers adjust it', () => {
@@ -43,9 +57,9 @@ test('shows a next-edition helper', () => {
   expect(screen.getByText(/your next edition/i)).toBeInTheDocument()
 })
 
-test('timezone control emits timezone on change', () => {
-  let patch: SettingsPatch | null = null
-  wrap((p) => { patch = p })
+test('changing only the timezone still saves both fields on Save', () => {
+  const patches: SettingsPatch[] = []
+  wrap((p) => patches.push(p))
   const tz = screen.getByLabelText(/timezone/i) as HTMLSelectElement
   // Pick a value that actually exists in the rendered control (the select's
   // option list varies with the runtime's ICU data); fall back to a literal
@@ -53,7 +67,13 @@ test('timezone control emits timezone on change', () => {
   const opt = Array.from(tz.querySelectorAll('option')).map((o) => o.value).find((v) => v && v !== tz.value)
   const value = opt ?? 'Asia/Kolkata'
   fireEvent.change(tz, { target: { value } })
-  expect(patch).toEqual({ timezone: value })
+  fireEvent.click(screen.getByRole('button', { name: /save delivery time/i }))
+  expect(patches).toEqual([{ delivery_time: '07:00', timezone: value }])   // unchanged time carried through
+})
+
+test('the device-timezone quick-fill button is gone', () => {
+  wrap(() => {})
+  expect(screen.queryByRole('button', { name: /use this device/i })).not.toBeInTheDocument()
 })
 
 import { vi } from 'vitest'

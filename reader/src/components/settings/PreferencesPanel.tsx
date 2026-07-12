@@ -34,6 +34,11 @@ export function PreferencesPanel({
   const status = useStatus()
   // Local state so the day input edits smoothly (server round-trip doesn't snap it back).
   const [days, setDays] = useState(settings.cadence_days)
+  // Delivery time + timezone are edited into a draft and persisted together
+  // only when the user presses "Save delivery time" — not auto-saved.
+  const [deliveryTime, setDeliveryTime] = useState(settings.delivery_time)
+  const [tz, setTz] = useState(settings.timezone || 'UTC')
+  const deliveryDirty = deliveryTime !== settings.delivery_time || tz !== (settings.timezone || 'UTC')
   const [notify, setNotify] = useState(notifyEnabled())
   const [notifyHint, setNotifyHint] = useState('')
 
@@ -66,7 +71,10 @@ export function PreferencesPanel({
 
   const zones: string[] =
     typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
-  const deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+
+  function saveDelivery() {
+    if (deliveryDirty) onChange({ delivery_time: deliveryTime, timezone: tz })
+  }
 
   return (
     <div style={{ padding: '28px 0', borderBottom: `1px solid ${color.border}` }}>
@@ -120,8 +128,8 @@ export function PreferencesPanel({
 
         <div>
           <div style={{ fontSize: 14, color: color.muted, marginBottom: 10 }}>Delivery time</div>
-          <input aria-label="Delivery time" type="time" value={settings.delivery_time}
-            onChange={(e) => onChange({ delivery_time: e.target.value })}
+          <input aria-label="Delivery time" type="time" value={deliveryTime}
+            onChange={(e) => setDeliveryTime(e.target.value)}
             style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
               padding: '10px 14px', fontSize: 15, color: color.inkStrong, fontFamily: "'Source Code Pro', monospace" }} />
         </div>
@@ -130,29 +138,29 @@ export function PreferencesPanel({
           <div style={{ fontSize: 14, color: color.muted, marginBottom: 10 }}>Timezone</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             {zones.length > 0 ? (
-              <select aria-label="Timezone" value={settings.timezone || 'UTC'}
-                onChange={(e) => onChange({ timezone: e.target.value })}
+              <select aria-label="Timezone" value={tz}
+                onChange={(e) => setTz(e.target.value)}
                 style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
                   padding: '10px 14px', fontSize: 15, color: color.inkStrong, maxWidth: '100%' }}>
                 {zones.map((z) => <option key={z} value={z}>{z}</option>)}
               </select>
             ) : (
-              <input aria-label="Timezone" value={settings.timezone || 'UTC'} placeholder="Asia/Kolkata"
-                onChange={(e) => onChange({ timezone: e.target.value })}
+              <input aria-label="Timezone" value={tz} placeholder="Asia/Kolkata"
+                onChange={(e) => setTz(e.target.value)}
                 style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
                   padding: '10px 14px', fontSize: 15, color: color.inkStrong, fontFamily: "'Source Code Pro', monospace" }} />
-            )}
-            {deviceZone && settings.timezone !== deviceZone && (
-              <button type="button" onClick={() => onChange({ timezone: deviceZone })}
-                style={{ background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
-                  padding: '9px 14px', fontSize: 13, color: color.muted, cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                Use this device ({deviceZone})
-              </button>
             )}
           </div>
           <div style={{ fontSize: 13, color: color.faint, marginTop: 8, fontStyle: 'italic' }}>
             Editions are scheduled at your delivery time in this zone — set it to where you are, not the server.
           </div>
+          <button type="button" onClick={saveDelivery} disabled={!deliveryDirty}
+            style={{ marginTop: 12, background: deliveryDirty ? color.dark : color.card,
+              border: `1px solid ${deliveryDirty ? color.dark : color.borderStrong}`, borderRadius: 5,
+              padding: '10px 18px', fontSize: 14, color: deliveryDirty ? color.paper : color.faint,
+              cursor: deliveryDirty ? 'pointer' : 'default', fontFamily: font.body }}>
+            Save delivery time
+          </button>
         </div>
 
         {notifySupported() && (
