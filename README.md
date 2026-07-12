@@ -172,6 +172,8 @@ the release build blocks plain-`http` (cleartext) traffic.
 > follows it even though Chrome works around it. With Private DNS off, the
 > system uses Tailscale's resolver and the app connects.
 
+Optionally enable **Settings → Preferences → "Notify me when an edition is ready"** to get a local notification a few minutes after each edition's delivery time (Android only; asks for notification permission).
+
 > **⚠️ Security.** The engine API is **unauthenticated** and single-user. Keep it
 > on a **trusted LAN or VPN** — never expose it to the public internet; anyone who
 > can reach it can read your notes.
