@@ -15,6 +15,7 @@ function mk(status: AppStatus, hasIssue: boolean): ApiClient {
     cancelJobs: async () => ({ cancelled: 0 }),
     expandNote: async () => ({ title: '', text: '' }),
     setIssueFlags: async () => ({}) as never,
+    getPromptDefaults: async () => ({ writer: 'DEFAULT WRITER VOICE', note_expand: 'DEFAULT NOTE-EXPAND VOICE' }),
   }
 }
 const S = (o: Partial<AppStatus>): AppStatus => ({ indexed: true, theme_count: 1, note_count: 5,

@@ -7,7 +7,8 @@ import type { Settings, SettingsPatch } from '../../types/settings'
 
 const base: Settings = { vault_paths: ['/v'], excluded_paths: [], profile_text: '', cadence_days: 1,
   delivery_time: '07:00', timezone: 'UTC', reading_min: 7, notes_per_issue: 3, provider: 'openrouter',
-  ollama_endpoint: 'http://localhost:11434', embed_model: 'e', summary_model: 's', writer_model: 'w' }
+  ollama_endpoint: 'http://localhost:11434', embed_model: 'e', summary_model: 's', writer_model: 'w',
+  writer_prompt: '', note_expand_prompt: '', note_expand_words: 500 }
 
 function wrap(onChange: (p: SettingsPatch) => void, settings: Settings = base) {
   const qc = new QueryClient()

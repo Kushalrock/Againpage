@@ -71,3 +71,11 @@ test('setIssueFlags PATCHes /issues/{id}', async () => {
   expect(bodies.at(-1)).toBe(JSON.stringify({ favorite: true }))
   vi.unstubAllGlobals()
 })
+
+test('getPromptDefaults GETs /prompts/defaults', async () => {
+  const urls: string[] = []
+  vi.stubGlobal('fetch', async (u: string) => { urls.push(u); return { ok: true, json: async () => ({}) } as Response })
+  await httpClient('http://x').getPromptDefaults()
+  expect(urls.at(-1)).toBe('http://x/prompts/defaults')
+  vi.unstubAllGlobals()
+})

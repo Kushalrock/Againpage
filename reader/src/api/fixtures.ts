@@ -340,6 +340,9 @@ const SETTINGS: Settings = {
   embed_model: 'openai/text-embedding-3-small',
   summary_model: 'openai/gpt-4o-mini',
   writer_model: 'anthropic/claude-3.5-sonnet',
+  writer_prompt: '',
+  note_expand_prompt: '',
+  note_expand_words: 500,
 }
 const vaultNoteCount = 1284
 
@@ -360,4 +363,5 @@ export const fixtureClient: ApiClient = {
     text: `**${title}** — a fuller, ~500-word standalone reading of this note would appear here, unfolding its `
       + `core thesis, the reasoning, the key distinctions, and the takeaway.` }),
   setIssueFlags: async (id, patch) => ({ id, active: patch.active ?? true, favorite: patch.favorite ?? false }),
+  getPromptDefaults: async () => ({ writer: 'DEFAULT WRITER VOICE', note_expand: 'DEFAULT NOTE-EXPAND VOICE' }),
 }

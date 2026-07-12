@@ -44,6 +44,11 @@ export function useSaveSettings() {
     },
   })
 }
+export function usePromptDefaults() {
+  const client = useClient()
+  return useQuery({ queryKey: ['prompt-defaults'], queryFn: () => client.getPromptDefaults(),
+    staleTime: Infinity, retry: false })
+}
 export function useStatus(opts?: { refetchInterval?: number | false }) {
   const client = useClient()
   return useQuery({ queryKey: ['status'], queryFn: () => client.getStatus(),

@@ -73,5 +73,6 @@ export function httpClient(baseUrl?: string): ApiClient {
     cancelJobs: (type: string) => post('/jobs/cancel?type=' + encodeURIComponent(type)),
     expandNote: (title: string) => get('/notes/expand?title=' + encodeURIComponent(title)),
     setIssueFlags: (id, body) => patch(`/issues/${id}`, body),
+    getPromptDefaults: () => get('/prompts/defaults'),
   }
 }

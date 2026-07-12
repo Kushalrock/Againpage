@@ -21,6 +21,7 @@ function client(spy: Spy, active: string[], indexed = true): ApiClient {
     cancelJobs: async (t: string) => { spy.cancel.push(t); return { cancelled: 1 } },
     expandNote: async () => ({ title: '', text: '' }),
     setIssueFlags: async () => ({}) as never,
+    getPromptDefaults: async () => ({ writer: 'DEFAULT WRITER VOICE', note_expand: 'DEFAULT NOTE-EXPAND VOICE' }),
   }
 }
 function wrap(active: string[] = [], indexed = true) {
