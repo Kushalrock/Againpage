@@ -31,7 +31,9 @@ def start_watcher(vault_path: str, queue, *, delay: float = 2.0):  # pragma: no 
     loop = asyncio.get_event_loop()
     def flush(paths: set[str]):
         if any(p.endswith(".md") for p in paths):
-            asyncio.run_coroutine_threadsafe(queue.enqueue("ingest", {}), loop)
+            # Coalesce: if an ingest is already queued, don't stack another —
+            # the queued one will scan the latest state when it runs.
+            asyncio.run_coroutine_threadsafe(queue.enqueue_if_absent("ingest", {}), loop)
     deb = Debouncer(delay=delay, flush=flush)
 
     class Handler(FileSystemEventHandler):

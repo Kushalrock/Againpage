@@ -18,6 +18,7 @@ class _Q:
     def __init__(self): self.enq = []
     async def is_cancelled(self, jid): return False
     async def enqueue(self, t, p, **k): self.enq.append(t)
+    async def enqueue_if_absent(self, t, p): self.enq.append(t); return True
 
 class _Prov:
     async def summarize(self, t, b, *, model): return NoteDigest(substantive=False, summary="", tags=[])

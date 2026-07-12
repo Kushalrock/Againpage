@@ -25,6 +25,21 @@ class Queue:
                 (type, json.dumps(payload), run_after))
             return (await cur.fetchone())[0]
 
+    async def enqueue_if_absent(self, type: str, payload: dict) -> bool:
+        """Enqueue only if no job of this type is already *queued* (not yet
+        started). Coalesces the automatic watcher/periodic ingests (and the
+        cluster they chain) so rapid vault activity can't pile up duplicate
+        jobs. A currently-*running* job does not block a new enqueue, so a
+        change arriving mid-run is still picked up by the next job. Returns
+        True if a row was inserted."""
+        async with self.pool.connection() as conn:
+            cur = await conn.execute(
+                """INSERT INTO jobs(type,payload)
+                   SELECT %s,%s
+                   WHERE NOT EXISTS (SELECT 1 FROM jobs WHERE type=%s AND status='queued')""",
+                (type, json.dumps(payload), type))
+            return cur.rowcount > 0
+
     async def claim(self) -> Job | None:
         async with self.pool.connection() as conn:
             conn.row_factory = dict_row

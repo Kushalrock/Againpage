@@ -68,7 +68,12 @@ async def handle_ingest(job: Job, *, repo, provider, queue, settings) -> None:
                 scanned=counts.get("scanned", 0),
                 synced=counts.get("scanned", 0) - counts.get("failed", 0),
                 failed=counts.get("failed", 0))
-            await queue.enqueue("cluster", {})   # chain a re-cluster after a full-vault ingest
+            # Re-cluster only when the vault actually changed. A watcher/periodic
+            # tick that finds everything unchanged (all skipped) must NOT trigger
+            # an expensive re-cluster. enqueue_if_absent coalesces so rapid
+            # changes don't stack up cluster jobs.
+            if counts.get("ingested") or counts.get("pruned") or counts.get("deactivated"):
+                await queue.enqueue_if_absent("cluster", {})
 
 async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     import time as _t
@@ -120,7 +125,7 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
             try:
                 s = await repo.get_settings(await repo.ensure_local_user())
                 if s and s.vault_paths and sync_due(s.sync_interval_minutes, _t.monotonic() - last_sync):
-                    await queue.enqueue("ingest", {})
+                    await queue.enqueue_if_absent("ingest", {})
                     last_sync = _t.monotonic()
             except Exception:  # noqa: BLE001
                 log.exception("periodic sync tick failed")

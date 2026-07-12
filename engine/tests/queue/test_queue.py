@@ -18,6 +18,19 @@ async def test_enqueue_claim_complete():
     assert (await q.claim()) is None          # already running → not re-claimed
     await q.complete(job.id)
 
+async def test_enqueue_if_absent_coalesces_queued_jobs():
+    q = await fresh_queue()
+    assert await q.enqueue_if_absent("ingest", {}) is True       # first: inserts
+    assert await q.enqueue_if_absent("ingest", {}) is False      # already queued: skipped
+    # A running job doesn't block a fresh enqueue (a change mid-run still lands).
+    job = await q.claim()
+    assert job is not None and job.type == "ingest"
+    assert await q.enqueue_if_absent("ingest", {}) is True       # nothing queued now → inserts
+    # And that new one is claimable.
+    nxt = await q.claim()
+    assert nxt is not None and nxt.type == "ingest" and nxt.id != job.id
+
+
 async def test_fail_reschedules():
     q = await fresh_queue()
     await q.enqueue("ingest", {})

@@ -34,6 +34,22 @@ async def test_full_vault_ingest_chains_a_cluster_job(tmp_path: Path):
     claimed = await queue.claim()
     assert claimed is not None and claimed.type == "cluster"       # cluster chained
 
+async def test_unchanged_vault_ingest_does_not_chain_cluster(tmp_path: Path):
+    # A watcher/periodic tick that finds nothing changed must not re-cluster.
+    (tmp_path/"a.md").write_text("# A\nidea one")
+    pool = await _fresh(); repo = Repository(pool); queue = Queue(pool); uid = await repo.ensure_local_user()
+    s = _settings(uid, str(tmp_path))
+    # First ingest: new note → chains a cluster.
+    await handle_ingest(Job(id=uuid4(), type="ingest", payload={}, attempts=1),
+                        repo=repo, provider=FakeProvider(), queue=queue, settings=s)
+    first = await queue.claim()
+    assert first is not None and first.type == "cluster"
+    await queue.complete(first.id)
+    # Second ingest, nothing changed (same content hash) → NO cluster chained.
+    await handle_ingest(Job(id=uuid4(), type="ingest", payload={}, attempts=1),
+                        repo=repo, provider=FakeProvider(), queue=queue, settings=s)
+    assert await queue.claim() is None
+
 async def test_single_path_ingest_does_not_chain(tmp_path: Path):
     f = tmp_path/"a.md"; f.write_text("# A\nidea")
     pool = await _fresh(); repo = Repository(pool); queue = Queue(pool); uid = await repo.ensure_local_user()
