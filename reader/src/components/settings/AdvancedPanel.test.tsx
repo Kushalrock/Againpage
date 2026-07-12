@@ -3,9 +3,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ClientContext } from '../../api/queries'
 import type { ApiClient } from '../../api/client'
 import type { AppStatus } from '../../types/status'
+import type { Settings } from '../../types/settings'
 import { AdvancedPanel } from './AdvancedPanel'
 
 type Spy = { reindex: number; trigger: number; cancel: string[] }
+
+const base: Settings = { vault_paths: [], excluded_paths: [], profile_text: '',
+  cadence_days: 1, delivery_time: '07:00', timezone: 'UTC', reading_min: 7, notes_per_issue: 3,
+  provider: 'openrouter', ollama_endpoint: '', embed_model: '', summary_model: '', writer_model: '',
+  writer_prompt: '', note_expand_prompt: '', note_expand_words: 500 }
 
 const S = (active: string[], indexed = true): AppStatus => ({ indexed, theme_count: indexed ? 1 : 0,
   note_count: 5, issue_count: 0, latest_issue_date: null, next_edition_at: null, delivery_time: '07:00',
@@ -28,7 +34,7 @@ function wrap(active: string[] = [], indexed = true) {
   const spy: Spy = { reindex: 0, trigger: 0, cancel: [] }
   const qc = new QueryClient()
   render(<QueryClientProvider client={qc}>
-    <ClientContext.Provider value={client(spy, active, indexed)}><AdvancedPanel noteCount={42} /></ClientContext.Provider>
+    <ClientContext.Provider value={client(spy, active, indexed)}><AdvancedPanel noteCount={42} settings={base} /></ClientContext.Provider>
   </QueryClientProvider>)
   return spy
 }

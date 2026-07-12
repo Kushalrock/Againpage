@@ -1,5 +1,7 @@
 import { useReindex, useTriggerIssue, useCancelJobs, useStatus } from '../../api/queries'
+import { EditorialPrompts } from './EditorialPrompts'
 import { color } from '../../theme/tokens'
+import type { Settings } from '../../types/settings'
 
 function btnStyle(disabled: boolean): React.CSSProperties {
   return { background: 'transparent', border: `1px solid ${color.dark}`, borderRadius: 5,
@@ -10,7 +12,7 @@ const cancelStyle: React.CSSProperties = { marginLeft: 12, background: 'transpar
   border: `1px solid ${color.accent}`, borderRadius: 5, padding: '9px 14px', fontSize: 13,
   color: color.accent, cursor: 'pointer', fontFamily: "'Newsreader', Georgia, serif" }
 
-export function AdvancedPanel({ noteCount }: { noteCount: number }) {
+export function AdvancedPanel({ noteCount, settings }: { noteCount: number; settings: Settings }) {
   const reindex = useReindex()
   const generate = useTriggerIssue()
   const cancel = useCancelJobs()
@@ -55,6 +57,7 @@ export function AdvancedPanel({ noteCount }: { noteCount: number }) {
           )}
         </div>
       </div>
+      <EditorialPrompts settings={settings} />
     </div>
   )
 }

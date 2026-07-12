@@ -61,7 +61,7 @@ export function Settings() {
 
       <PreferencesPanel settings={data} onChange={(patch) => scheduleSave(patch)} />
 
-      <AdvancedPanel noteCount={data.vault_note_count} />
+      <AdvancedPanel noteCount={data.vault_note_count} settings={data} />
 
       <ConnectionPanel />
     </div>
