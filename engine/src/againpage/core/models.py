@@ -63,6 +63,9 @@ class SettingsRow:
     timezone: str = "UTC"
     openrouter_key: str | None = None
     ollama_key: str | None = None
+    writer_prompt: str | None = None
+    note_expand_prompt: str | None = None
+    note_expand_words: int = 500
 
 @dataclass
 class IssueRow:

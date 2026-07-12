@@ -51,6 +51,9 @@ class SettingsResponse(BaseModel):
     embed_model: str
     summary_model: str
     writer_model: str
+    writer_prompt: str
+    note_expand_prompt: str
+    note_expand_words: int
     vault_note_count: int
     has_openrouter_key: bool = False   # keys are write-only; expose only whether one is saved
     has_ollama_key: bool = False

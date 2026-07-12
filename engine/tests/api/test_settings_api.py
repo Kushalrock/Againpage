@@ -48,6 +48,21 @@ def test_provider_test_uses_health(monkeypatch):
             "embed_model":"e","summary_model":"s","writer_model":"w"}).json()
         assert res["ok"] is True and res["models"]["w"] is True
 
+def test_prompt_overrides_roundtrip():
+    with anyio.from_thread.start_blocking_portal() as portal:
+        client, _ = portal.call(_client)
+        client.portal = portal
+        # defaults
+        s0 = client.get("/settings").json()
+        assert s0["writer_prompt"] == "" and s0["note_expand_prompt"] == "" and s0["note_expand_words"] == 500
+        # set overrides
+        client.put("/settings", json={"writer_prompt": "Be bold.", "note_expand_words": 350})
+        s1 = client.get("/settings").json()
+        assert s1["writer_prompt"] == "Be bold." and s1["note_expand_words"] == 350
+        # clear the override (revert path)
+        client.put("/settings", json={"writer_prompt": ""})
+        assert client.get("/settings").json()["writer_prompt"] == ""
+
 def test_provider_keys_are_write_only_with_has_flags():
     with anyio.from_thread.start_blocking_portal() as portal:
         client, _ = portal.call(_client)

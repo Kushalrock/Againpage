@@ -28,6 +28,8 @@ def _settings_response(s, count: int) -> SettingsResponse:
         reading_min=s.reading_min, notes_per_issue=s.notes_per_issue, provider=s.provider,
         ollama_endpoint=s.ollama_endpoint, embed_model=s.embed_model or "",
         summary_model=s.summary_model or "", writer_model=s.writer_model or "",
+        writer_prompt=s.writer_prompt or "", note_expand_prompt=s.note_expand_prompt or "",
+        note_expand_words=s.note_expand_words,
         vault_note_count=count,
         has_openrouter_key=bool(s.openrouter_key), has_ollama_key=bool(s.ollama_key))
 
