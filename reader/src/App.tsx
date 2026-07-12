@@ -44,7 +44,7 @@ export default function App() {
   if (settings) {
     const compat = checkCompat({
       engineVersion: settings.engine_version,
-      minReader: settings.min_reader_version ?? '0.0.0',
+      minReader: settings.min_reader_version || '0.0.0',
       readerVersion: READER_VERSION,
       minEngine: MIN_ENGINE_VERSION,
     })
@@ -55,7 +55,7 @@ export default function App() {
           engineVersion={settings.engine_version}
           readerVersion={READER_VERSION}
           minEngine={MIN_ENGINE_VERSION}
-          minReader={settings.min_reader_version ?? '0.0.0'}
+          minReader={settings.min_reader_version || '0.0.0'}
           onRetry={() => { void refetch() }}
         />
       )
