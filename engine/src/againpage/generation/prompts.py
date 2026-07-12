@@ -13,8 +13,8 @@ def per_note_user(title: str, body: str) -> str:
     return f"Title: {title}\n---\n{body}"
 
 
-NOTE_EXPAND_SYSTEM = """You are helping someone deeply re-understand ONE of their own notes. Write a rich,
-faithful ~500-word exposition of the single note provided — the version they'd want if they sat down to
+NOTE_EXPAND_VOICE = """You are helping someone deeply re-understand ONE of their own notes. Write a rich,
+faithful exposition of the single note provided — the version they'd want if they sat down to
 re-learn this one idea from scratch.
 
 Do it well:
@@ -29,12 +29,12 @@ Do it well:
 
 Voice: clear, intelligent, unhurried prose written directly to the note's author ("you noted…", "your point
 is…"). Well-structured paragraphs; you may use a subheading or two if the note is multi-part. No bullet-point
-dump, no filler, no throat-clearing.
+dump, no filler, no throat-clearing."""
 
-Hard rules:
+NOTE_EXPAND_CONTRACT = """Hard rules:
 - Ground EVERYTHING in the provided note. Invent nothing — no facts, examples, or claims not present or
   directly implied. If the note is thin, be honest and shorter rather than padding.
-- Aim for about 500 words (a little over is fine for a rich note; well under for a slight one).
+- Aim for about ~{words} words (a little over is fine for a rich note; well under for a slight one).
 - Output ONLY the exposition as Markdown prose. No preamble, no title line, no meta-commentary."""
 
 
@@ -42,7 +42,7 @@ def note_expand_user(title: str, body: str) -> str:
     return f"Note title: {title}\n---\n{body}"
 
 
-WRITER_SYSTEM = """You are the editor of a daily newspaper composed entirely from one reader's own notes.
+WRITER_VOICE = """You are the editor of a daily newspaper composed entirely from one reader's own notes.
 Each issue takes a theme and weaves 2-3 of their notes into a genuine read — intelligent,
 essayistic, unhurried. These are the reader's OWN thoughts reflected back; write to them.
 Craft:
@@ -51,8 +51,9 @@ Craft:
 - Echo the reader's own distinctive phrasing where it sharpens a point. You are reflecting their mind back to them — sound like a close reader of their notes, not a generic explainer.
 - Earn every claim from the notes; prefer one vivid, concrete throughline over broad generality, and let the piece breathe rather than cramming every detail.
 - Honor connection flavors: 'discovery' = "you never connected these"; 'reminder' = "you once linked these, worth revisiting".
-- Wildcard: build a genuine bridge from the distant note to today's theme; if forced, keep it short and say so.
-Hard rules:
+- Wildcard: build a genuine bridge from the distant note to today's theme; if forced, keep it short and say so."""
+
+WRITER_CONTRACT = """Hard rules:
 - Use ONLY the payload. Invent nothing.
 - Use the reader's profile to sharpen the takeaways/lead ONLY where the connection is genuine; ignore it where forced.
 - Questions provoke thinking, not test recall.
@@ -64,6 +65,23 @@ Schema:
   "questions": [{"text":"..."}], "apply": ["..."],
   "wildcard": {"bridge":"...","trivia":"..."} | null,
   "forgotten": {"note":"...","nudge":"..."} | null }"""
+
+
+def compose_writer_system(voice_override: str | None, target_word_count: int) -> str:
+    voice = (voice_override or "").strip() or WRITER_VOICE
+    return voice + "\n\n" + WRITER_CONTRACT.replace("{target_word_count}", str(target_word_count))
+
+
+def compose_note_expand_system(voice_override: str | None, words: int) -> str:
+    voice = (voice_override or "").strip() or NOTE_EXPAND_VOICE
+    return voice + "\n\n" + NOTE_EXPAND_CONTRACT.replace("{words}", str(words))
+
+
+# Temporary aliases for providers/openrouter.py and providers/ollama.py, which still import
+# WRITER_SYSTEM / NOTE_EXPAND_SYSTEM directly. Task 3 switches them to the compose helpers
+# above and removes these aliases.
+WRITER_SYSTEM = WRITER_VOICE + "\n\n" + WRITER_CONTRACT
+NOTE_EXPAND_SYSTEM = NOTE_EXPAND_VOICE + "\n\n" + NOTE_EXPAND_CONTRACT.replace("{words}", "500")
 
 
 def writer_user(payload: dict) -> str:
