@@ -8,4 +8,7 @@ export interface AppStatus {
   delivery_time: string
   cadence_days: number
   active_jobs: string[]   // job types currently queued/running (ingest|cluster|generate)
+  synced?: number | null
+  sync_failed?: number | null
+  last_synced_at?: string | null
 }

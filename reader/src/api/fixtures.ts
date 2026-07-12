@@ -7,6 +7,7 @@ export const STATUS: import('../types/status').AppStatus = {
   indexed: true, theme_count: 12, note_count: 1284, issue_count: 47,
   latest_issue_date: '2026-06-30', next_edition_at: null, delivery_time: '07:00', cadence_days: 1,
   active_jobs: [],
+  synced: 56, sync_failed: 0, last_synced_at: '2026-06-30T07:00:00Z',
 }
 
 export const AMOR_FATI: IssueResponse = {

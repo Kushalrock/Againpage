@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { usePlatform } from '../../platform'
 import { isAndroid } from '../../platform/mobile'
 import { color, font } from '../../theme/tokens'
+import { useStatus, useReindex } from '../../api/queries'
+import { timeAgo } from '../../lib/timeAgo'
 import type { SettingsPatch } from '../../types/settings'
 
 const rowStyle = {
@@ -26,6 +28,9 @@ export function NotesFolderPanel({
   const mobile = isAndroid()
   const [newExcluded, setNewExcluded] = useState('')
   const [newPath, setNewPath] = useState('')
+  const status = useStatus()
+  const reindex = useReindex()
+  const [nowMs] = useState(() => Date.now())
 
   async function addFolder() {
     const result = await platform.folderPicker.pick()
@@ -90,6 +95,28 @@ export function NotesFolderPanel({
         <span style={{ fontFamily: font.display, fontSize: 17, color: color.inkStrong }}>{count}</span> notes
         {excludedPaths.length > 0 ? ' after exclusions' : ''} · scanned just now
       </div>
+
+      {status.data?.last_synced_at && (() => {
+        const synced = status.data.synced ?? 0
+        const failed = status.data.sync_failed ?? 0
+        const scanned = synced + failed              // synced = scanned − failed, so scanned = synced + failed
+        return (
+          <div style={{ fontSize: 13, color: color.faint, marginTop: 10, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span>
+              {scanned} scanned · {synced} synced
+              {failed > 0 && ` · ${failed} failed`}
+              {' · '}{timeAgo(status.data.last_synced_at, nowMs)}
+            </span>
+            {failed > 0 && (
+              <button type="button" onClick={() => reindex.mutate(false)} disabled={reindex.isPending}
+                style={{ background: 'transparent', border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+                  padding: '4px 10px', fontSize: 12, color: color.muted, cursor: 'pointer' }}>
+                {reindex.isPending ? 'Retrying…' : 'Retry'}
+              </button>
+            )}
+          </div>
+        )
+      })()}
 
       <div style={{ marginTop: 22 }}>
         <div style={{ fontSize: 13, color: color.muted, marginBottom: 8 }}>

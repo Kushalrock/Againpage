@@ -1,5 +1,9 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { PlatformContext, type Platform } from '../../platform'
+import { ClientContext } from '../../api/queries'
+import { fixtureClient, STATUS } from '../../api/fixtures'
+import type { ApiClient } from '../../api/client'
 import { NotesFolderPanel } from './NotesFolderPanel'
 import type { SettingsPatch } from '../../types/settings'
 
@@ -8,11 +12,16 @@ function fakePlatform(pickPath: string | null): Platform {
     keyStore: { get: async () => null, set: async () => {}, remove: async () => {} },
     connectionTest: { run: async () => ({ ok: true, reachable: true, models: {}, detail: '' }) } } as Platform
 }
-function wrap(paths: string[], excluded: string[], pickPath: string | null = '/new') {
+function wrap(paths: string[], excluded: string[], pickPath: string | null = '/new', client: ApiClient = fixtureClient) {
   const patches: SettingsPatch[] = []
-  render(<PlatformContext.Provider value={fakePlatform(pickPath)}>
-    <NotesFolderPanel paths={paths} excludedPaths={excluded} count={42} onChange={(p) => patches.push(p)} />
-  </PlatformContext.Provider>)
+  const qc = new QueryClient()
+  render(<QueryClientProvider client={qc}>
+    <ClientContext.Provider value={client}>
+      <PlatformContext.Provider value={fakePlatform(pickPath)}>
+        <NotesFolderPanel paths={paths} excludedPaths={excluded} count={42} onChange={(p) => patches.push(p)} />
+      </PlatformContext.Provider>
+    </ClientContext.Provider>
+  </QueryClientProvider>)
   return patches
 }
 
@@ -68,4 +77,23 @@ test('hides the native folder picker on Android (typed path stays)', () => {
   } finally {
     Object.defineProperty(navigator, 'userAgent', { value: realUA, configurable: true })
   }
+})
+
+test('shows the sync status line (scanned/synced/relative time)', async () => {
+  wrap(['/a'], [])
+  expect(await screen.findByText(/56 scanned/i)).toBeInTheDocument()
+  expect(screen.getByText(/56 synced/i)).toBeInTheDocument()
+})
+
+test('shows failed count + Retry when some notes failed', async () => {
+  const reindexCalls: (boolean | undefined)[] = []
+  const client: ApiClient = {
+    ...fixtureClient,
+    getStatus: async () => ({ ...STATUS, synced: 54, sync_failed: 2 }),
+    reindex: async (force?: boolean) => { reindexCalls.push(force); return { job_id: 'fixture-ingest' } },
+  }
+  wrap(['/a'], [], '/new', client)
+  expect(await screen.findByText(/2 failed/i)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /retry/i }))
+  await waitFor(() => expect(reindexCalls).toEqual([false]))
 })
