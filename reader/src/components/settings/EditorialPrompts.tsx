@@ -49,8 +49,8 @@ export function EditorialPrompts({ settings }: { settings: Settings }) {
       <div style={{ marginTop: 18 }}>
         <label style={{ fontSize: 14, color: color.muted, display: 'block', marginBottom: 6 }}>Note-expand word count</label>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <input aria-label="Note-expand word count" type="number" min={100} max={2000} value={words}
-            onChange={(e) => setWords(Math.max(100, Math.min(2000, +e.target.value || 500)))}
+          <input aria-label="Note-expand word count" type="number" min={1} value={words}
+            onChange={(e) => setWords(Math.max(1, Math.trunc(+e.target.value) || 500))}
             style={{ width: 100, background: color.card, border: `1px solid ${color.borderStrong}`,
               borderRadius: 5, padding: '8px 10px', fontSize: 14, color: color.inkStrong, fontFamily: font.mono }} />
           <button type="button"
