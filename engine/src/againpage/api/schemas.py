@@ -54,6 +54,7 @@ class SettingsResponse(BaseModel):
     writer_prompt: str
     note_expand_prompt: str
     note_expand_words: int
+    sync_interval_minutes: int
     vault_note_count: int
     has_openrouter_key: bool = False   # keys are write-only; expose only whether one is saved
     has_ollama_key: bool = False
@@ -90,3 +91,6 @@ class AppStatus(BaseModel):
     delivery_time: str
     cadence_days: int
     active_jobs: list[str] = []   # job types currently queued/running (ingest|cluster|generate)
+    synced: int | None = None
+    sync_failed: int | None = None
+    last_synced_at: str | None = None

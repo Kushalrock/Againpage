@@ -66,6 +66,7 @@ class SettingsRow:
     writer_prompt: str | None = None
     note_expand_prompt: str | None = None
     note_expand_words: int = 500
+    sync_interval_minutes: int = 60
 
 @dataclass
 class IssueRow:

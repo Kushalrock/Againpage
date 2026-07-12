@@ -30,6 +30,7 @@ def _settings_response(s, count: int) -> SettingsResponse:
         summary_model=s.summary_model or "", writer_model=s.writer_model or "",
         writer_prompt=s.writer_prompt or "", note_expand_prompt=s.note_expand_prompt or "",
         note_expand_words=s.note_expand_words,
+        sync_interval_minutes=s.sync_interval_minutes,
         vault_note_count=count,
         has_openrouter_key=bool(s.openrouter_key), has_ollama_key=bool(s.ollama_key))
 
@@ -124,6 +125,9 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
                 ZoneInfo(str(patch["timezone"]))
             except Exception:  # noqa: BLE001
                 raise HTTPException(422, f"unknown timezone: {patch['timezone']!r}")
+        if "sync_interval_minutes" in patch:
+            from againpage.scheduler.sync import clamp_sync_interval
+            patch = {**patch, "sync_interval_minutes": clamp_sync_interval(patch["sync_interval_minutes"])}
         s = await repo.upsert_settings(uid, patch)
         return _settings_response(s, _count(s))
 
@@ -194,6 +198,7 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
         themes = await repo.themes(uid)
         notes = await repo.active_notes(uid)
         issues = await repo.list_issues(uid)
+        ss = await repo.get_sync_state(uid)
         indexed = len(themes) > 0
         latest = issues[0] if issues else None
         next_edition_at = None
@@ -207,6 +212,9 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
             next_edition_at=next_edition_at,
             delivery_time=(s.delivery_time.strftime("%H:%M") if s and s.delivery_time else "07:00"),
             cadence_days=(s.cadence_days if s else 1),
-            active_jobs=(await queue.active_types() if queue else []))
+            active_jobs=(await queue.active_types() if queue else []),
+            synced=(ss["synced"] if ss else None),
+            sync_failed=(ss["failed"] if ss else None),
+            last_synced_at=(ss["last_synced_at"].isoformat() if ss and ss["last_synced_at"] else None))
 
     return r

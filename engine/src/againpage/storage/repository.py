@@ -14,7 +14,8 @@ log = logging.getLogger(__name__)
 _SETTINGS_COLS = ("user_id","vault_paths","excluded_paths","profile_text","cadence_days",
     "delivery_time","reading_min","notes_per_issue","provider","ollama_endpoint",
     "embed_model","summary_model","writer_model","timezone",
-    "writer_prompt","note_expand_prompt","note_expand_words","openrouter_key","ollama_key")
+    "writer_prompt","note_expand_prompt","note_expand_words","sync_interval_minutes",
+    "openrouter_key","ollama_key")
 
 # Advisory-lock key serialising the embedding-dimension DDL across processes.
 _EMBED_DIM_LOCK = 0x41474E50  # "AGNP"
@@ -138,6 +139,22 @@ class Repository:
                     f"UPDATE settings SET {sets} WHERE user_id=%s",
                     (*allowed.values(), user_id))
         return await self.get_settings(user_id)
+
+    async def set_sync_state(self, user_id: UUID, *, scanned: int, synced: int, failed: int) -> None:
+        async with self.pool.connection() as conn:
+            await conn.execute(
+                """INSERT INTO sync_state(user_id, scanned, synced, failed, last_synced_at)
+                   VALUES (%s,%s,%s,%s, now())
+                   ON CONFLICT (user_id) DO UPDATE SET
+                     scanned=EXCLUDED.scanned, synced=EXCLUDED.synced,
+                     failed=EXCLUDED.failed, last_synced_at=now()""",
+                (user_id, scanned, synced, failed))
+
+    async def get_sync_state(self, user_id: UUID) -> dict | None:
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute("SELECT * FROM sync_state WHERE user_id=%s", (user_id,))
+            return await cur.fetchone()
 
     async def next_issue_no(self, user_id: UUID) -> int:
         async with self.pool.connection() as conn:
