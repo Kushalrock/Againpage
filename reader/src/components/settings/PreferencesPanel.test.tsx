@@ -76,6 +76,15 @@ test('the device-timezone quick-fill button is gone', () => {
   expect(screen.queryByRole('button', { name: /use this device/i })).not.toBeInTheDocument()
 })
 
+test('a saved timezone missing from the canonical list still shows as selected', () => {
+  // "Asia/Calcutta" is an obsolete alias Intl.supportedValuesOf omits; the
+  // control must still surface the saved value instead of silently defaulting.
+  wrap(() => {}, { ...base, timezone: 'Asia/Calcutta' })
+  const tz = screen.getByLabelText(/timezone/i) as HTMLSelectElement
+  expect(tz.value).toBe('Asia/Calcutta')
+  expect(Array.from(tz.querySelectorAll('option')).some((o) => o.value === 'Asia/Calcutta')).toBe(true)
+})
+
 import { vi } from 'vitest'
 // notifySupported is left as the real implementation (a plain UA check, no
 // native plugin import) so it correctly reflects androidUA() below; only the

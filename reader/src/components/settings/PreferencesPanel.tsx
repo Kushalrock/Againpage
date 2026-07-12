@@ -69,8 +69,12 @@ export function PreferencesPanel({
   const target = status.data?.next_edition_at ?? projected
   const cd = useCountdown(target)
 
-  const zones: string[] =
+  const canonicalZones: string[] =
     typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
+  // The current value may be an obsolete alias the canonical list omits (e.g.
+  // "Asia/Calcutta" from an older OS). Always include it so it shows selected
+  // rather than silently displaying the wrong zone.
+  const zones = canonicalZones.includes(tz) ? canonicalZones : [tz, ...canonicalZones]
 
   function saveDelivery() {
     if (deliveryDirty) onChange({ delivery_time: deliveryTime, timezone: tz })
