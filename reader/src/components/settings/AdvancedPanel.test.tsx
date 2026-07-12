@@ -97,3 +97,11 @@ test('sync interval saves; snaps 1..29 up to 30; keeps 0', async () => {
   fireEvent.blur(input)
   await waitFor(() => expect(spy.saved.at(-1)).toEqual({ sync_interval_minutes: 0 }))
 })
+
+test('sync interval saves; leaves values >=30 unchanged', async () => {
+  const spy = wrap([])
+  const input = screen.getByLabelText(/auto-sync every/i)
+  fireEvent.change(input, { target: { value: '45' } })
+  fireEvent.blur(input)
+  await waitFor(() => expect(spy.saved.at(-1)).toEqual({ sync_interval_minutes: 45 }))
+})
