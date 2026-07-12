@@ -246,6 +246,8 @@ export const ARCHIVE: ArchiveResponse = {
           dek: 'Epictetus, Marcus Aurelius, and Nietzsche, circling one instruction: want what happens.',
           tags: ['Philosophy', 'Stoicism', 'Meaning'],
           reading_min: 7,
+          active: true,
+          favorite: false,
         },
         {
           id: 'fixture-46',
@@ -255,6 +257,8 @@ export const ARCHIVE: ArchiveResponse = {
           dek: 'Loops, attractors, and why real change behaves like a phase transition.',
           tags: ['Behaviour', 'Systems'],
           reading_min: 8,
+          active: true,
+          favorite: true,
         },
         {
           id: 'fixture-45',
@@ -264,6 +268,8 @@ export const ARCHIVE: ArchiveResponse = {
           dek: 'On influence — and what we mistake for our own ideas.',
           tags: ['Creativity', 'History'],
           reading_min: 6,
+          active: false,
+          favorite: false,
         },
         {
           id: 'fixture-44',
@@ -273,6 +279,8 @@ export const ARCHIVE: ArchiveResponse = {
           dek: 'Slow growth, deep roots, and the notes you keep returning to.',
           tags: ['Nature', 'Time'],
           reading_min: 5,
+          active: false,
+          favorite: true,
         },
       ],
     },
@@ -287,6 +295,8 @@ export const ARCHIVE: ArchiveResponse = {
           dek: 'Error as information — from typesetting to machine learning.',
           tags: ['Learning', 'Language'],
           reading_min: 9,
+          active: true,
+          favorite: false,
         },
         {
           id: 'fixture-42',
@@ -296,6 +306,8 @@ export const ARCHIVE: ArchiveResponse = {
           dek: 'Silence, rests, and negative space across music and design.',
           tags: ['Art', 'Attention'],
           reading_min: 6,
+          active: true,
+          favorite: false,
         },
         {
           id: 'fixture-41',
@@ -305,6 +317,8 @@ export const ARCHIVE: ArchiveResponse = {
           dek: 'Models, abstraction, and the cost of forgetting they are models.',
           tags: ['Philosophy', 'Systems'],
           reading_min: 8,
+          active: true,
+          favorite: false,
         },
       ],
     },
@@ -345,4 +359,5 @@ export const fixtureClient: ApiClient = {
   expandNote: async (title: string) => ({ title,
     text: `**${title}** — a fuller, ~500-word standalone reading of this note would appear here, unfolding its `
       + `core thesis, the reasoning, the key distinctions, and the takeaway.` }),
+  setIssueFlags: async (id, patch) => ({ id, active: patch.active ?? true, favorite: patch.favorite ?? false }),
 }

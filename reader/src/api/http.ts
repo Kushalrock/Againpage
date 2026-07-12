@@ -55,6 +55,12 @@ export function httpClient(baseUrl?: string): ApiClient {
       body: JSON.stringify(body),
     })
   const post = (p: string) => withTimeout(p, { method: 'POST' })
+  const patch = (p: string, body: unknown) =>
+    withTimeout(p, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
   return {
     getTodayIssue: () => get('/issues/today'),
     getIssue: (id) => get(`/issues/${id}`),
@@ -66,5 +72,6 @@ export function httpClient(baseUrl?: string): ApiClient {
     triggerIssue: () => post('/trigger'),
     cancelJobs: (type: string) => post('/jobs/cancel?type=' + encodeURIComponent(type)),
     expandNote: (title: string) => get('/notes/expand?title=' + encodeURIComponent(title)),
+    setIssueFlags: (id, body) => patch(`/issues/${id}`, body),
   }
 }

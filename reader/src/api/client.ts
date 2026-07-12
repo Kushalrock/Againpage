@@ -12,4 +12,5 @@ export interface ApiClient {
   triggerIssue(): Promise<{ job_id: string }>
   cancelJobs(type: string): Promise<{ cancelled: number }>
   expandNote(title: string): Promise<NoteExpansion>
+  setIssueFlags(id: string, patch: { active?: boolean; favorite?: boolean }): Promise<{ id: string; active: boolean; favorite: boolean }>
 }

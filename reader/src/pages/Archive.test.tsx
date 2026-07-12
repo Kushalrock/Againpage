@@ -15,7 +15,8 @@ function mk(status: AppStatus, populated: boolean): ApiClient {
     getSettings: async () => ({}) as never, saveSettings: async () => ({}) as never,
     getStatus: async () => status, reindex: async () => ({ job_id: 'i' }), triggerIssue: async () => ({ job_id: 'g' }),
     cancelJobs: async () => ({ cancelled: 0 }),
-    expandNote: async () => ({ title: '', text: '' }) }
+    expandNote: async () => ({ title: '', text: '' }),
+    setIssueFlags: async () => ({}) as never }
 }
 function wrap(client: ApiClient, onOpen: (id: string) => void = () => {}, onNavigate: (s: string) => void = () => {}) {
   const qc = new QueryClient()

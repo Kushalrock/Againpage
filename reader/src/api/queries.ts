@@ -64,3 +64,12 @@ export function useCancelJobs() {
   return useMutation({ mutationFn: (type: string) => client.cancelJobs(type),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['status'] }) })
 }
+export function useSetIssueFlags() {
+  const client = useClient()
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: { active?: boolean; favorite?: boolean } }) =>
+      client.setIssueFlags(id, patch),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['archive'] }),
+  })
+}

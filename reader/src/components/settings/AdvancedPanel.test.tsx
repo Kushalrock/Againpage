@@ -20,6 +20,7 @@ function client(spy: Spy, active: string[], indexed = true): ApiClient {
     triggerIssue: async () => { spy.trigger++; return { job_id: 'g' } },
     cancelJobs: async (t: string) => { spy.cancel.push(t); return { cancelled: 1 } },
     expandNote: async () => ({ title: '', text: '' }),
+    setIssueFlags: async () => ({}) as never,
   }
 }
 function wrap(active: string[] = [], indexed = true) {

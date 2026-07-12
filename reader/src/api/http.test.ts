@@ -61,3 +61,13 @@ test('pingEngine returns true on 200, false on reject', async () => {
   expect(await pingEngine('http://x')).toBe(false)
   vi.unstubAllGlobals()
 })
+
+test('setIssueFlags PATCHes /issues/{id}', async () => {
+  const bodies: string[] = []
+  vi.stubGlobal('fetch', async (_url: string, init: RequestInit) => {
+    bodies.push(String(init?.body)); return { ok: true, json: async () => ({}) } as Response
+  })
+  await httpClient('http://x').setIssueFlags('abc', { favorite: true })
+  expect(bodies.at(-1)).toBe(JSON.stringify({ favorite: true }))
+  vi.unstubAllGlobals()
+})
