@@ -41,9 +41,11 @@ def make_provider(settings: SettingsRow) -> Provider:
     # its env var when the settings key is empty.
     or_key = settings.openrouter_key or None
     ol_key = settings.ollama_key or None
+    prompt_kw = dict(writer_prompt=settings.writer_prompt, note_expand_prompt=settings.note_expand_prompt,
+                      note_expand_words=settings.note_expand_words)
     if settings.provider == "ollama":
-        return OllamaProvider(settings.ollama_endpoint, api_key=ol_key)
+        return OllamaProvider(settings.ollama_endpoint, api_key=ol_key, **prompt_kw)
     if settings.provider == "custom":
-        return RoutingProvider(OpenRouterProvider(or_key),
-                               OllamaProvider(settings.ollama_endpoint, api_key=ol_key))
-    return OpenRouterProvider(or_key)
+        return RoutingProvider(OpenRouterProvider(or_key, **prompt_kw),
+                               OllamaProvider(settings.ollama_endpoint, api_key=ol_key, **prompt_kw))
+    return OpenRouterProvider(or_key, **prompt_kw)

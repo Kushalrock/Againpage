@@ -4,7 +4,7 @@ This directory contains hand-authored golden payloads for M1 quality iteration.
 
 ## What Are Goldens?
 
-Each golden payload is a complete, self-contained `Payload` dict (see `engine/src/againpage/core/models.py::Payload`) that exercises the full writing pipeline. The payloads are designed to test real-world scenarios and enable rapid iteration on the WRITER_SYSTEM prompt.
+Each golden payload is a complete, self-contained `Payload` dict (see `engine/src/againpage/core/models.py::Payload`) that exercises the full writing pipeline. The payloads are designed to test real-world scenarios and enable rapid iteration on the writer prompt (`WRITER_VOICE`/`WRITER_CONTRACT`, composed via `compose_writer_system`).
 
 - **amor_fati.json**: A complete payload themed "Amor Fati: Loving What Is" with anchor notes, fresh notes with full text, multiple connections with flavors, a wildcard bridge, and a forgotten nudge.
 
@@ -35,7 +35,7 @@ This is the M1 deliverable: human review of composed issues before they reach re
    - Do **questions** provoke thinking rather than test recall?
    - Does the **wildcard** feel authentic or forced?
 
-5. **Iterate the prompt**: Edit `engine/src/againpage/generation/prompts.py::WRITER_SYSTEM` to improve quality, then re-run.
+5. **Iterate the prompt**: Edit `engine/src/againpage/generation/prompts.py::WRITER_VOICE`/`WRITER_CONTRACT` to improve quality, then re-run.
 
 6. **Validate via the test** (runs with a mocked provider, no API):
    ```bash

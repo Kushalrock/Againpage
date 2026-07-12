@@ -8,5 +8,6 @@ def test_per_note_prompt_forbids_invention():
 
 
 def test_writer_prompt_has_schema_and_rules():
-    assert "Use ONLY the payload. Invent nothing." in prompts.WRITER_SYSTEM
-    assert "discovery" in prompts.WRITER_SYSTEM and "reminder" in prompts.WRITER_SYSTEM
+    system = prompts.compose_writer_system(None, 1200)
+    assert "Use ONLY the payload. Invent nothing." in system
+    assert "discovery" in system and "reminder" in system

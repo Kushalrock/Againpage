@@ -18,10 +18,15 @@ def _check(res: httpx.Response, model: str) -> None:
 
 class OpenRouterProvider(Provider):
     def __init__(self, api_key: str | None = None, *, base_url: str = "https://openrouter.ai/api/v1",
-                 http: httpx.AsyncClient | None = None):
+                 http: httpx.AsyncClient | None = None,
+                 writer_prompt: str | None = None, note_expand_prompt: str | None = None,
+                 note_expand_words: int = 500):
         self.api_key = api_key or os.environ.get("OPENROUTER_API_KEY", "")
         self.base_url = base_url
         self._http = http
+        self.writer_prompt = writer_prompt
+        self.note_expand_prompt = note_expand_prompt
+        self.note_expand_words = note_expand_words
 
     def _client(self) -> httpx.AsyncClient:
         return self._http or httpx.AsyncClient(
@@ -56,12 +61,13 @@ class OpenRouterProvider(Provider):
 
     async def generate(self, payload: dict, *, model: str) -> dict:
         wc = payload.get("target_word_count", 1200)
-        system = prompts.WRITER_SYSTEM.replace("{target_word_count}", str(wc))
+        system = prompts.compose_writer_system(self.writer_prompt, wc)
         content = await self._chat(model, system, prompts.writer_user(payload))
         return extract_json(content)
 
     async def expand_note(self, title: str, body: str, *, model: str) -> str:
-        return await self._chat(model, prompts.NOTE_EXPAND_SYSTEM, prompts.note_expand_user(title, body))
+        system = prompts.compose_note_expand_system(self.note_expand_prompt, self.note_expand_words)
+        return await self._chat(model, system, prompts.note_expand_user(title, body))
 
     async def health(self, *, models: list[str]) -> ProviderHealth:
         results: dict[str, bool] = {}

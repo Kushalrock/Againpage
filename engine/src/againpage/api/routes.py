@@ -136,6 +136,11 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
         h = await provider.health(models=models)
         return ProviderTestResult(ok=h.ok, reachable=h.reachable, models=h.models, detail=h.detail)
 
+    @r.get("/prompts/defaults")
+    async def prompt_defaults():
+        from againpage.generation import prompts
+        return {"writer": prompts.WRITER_VOICE, "note_expand": prompts.NOTE_EXPAND_VOICE}
+
     @r.get("/vault/status")
     async def vault_status():
         uid = await repo.ensure_local_user()

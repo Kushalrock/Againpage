@@ -77,13 +77,6 @@ def compose_note_expand_system(voice_override: str | None, words: int) -> str:
     return voice + "\n\n" + NOTE_EXPAND_CONTRACT.replace("{words}", str(words))
 
 
-# Temporary aliases for providers/openrouter.py and providers/ollama.py, which still import
-# WRITER_SYSTEM / NOTE_EXPAND_SYSTEM directly. Task 3 switches them to the compose helpers
-# above and removes these aliases.
-WRITER_SYSTEM = WRITER_VOICE + "\n\n" + WRITER_CONTRACT
-NOTE_EXPAND_SYSTEM = NOTE_EXPAND_VOICE + "\n\n" + NOTE_EXPAND_CONTRACT.replace("{words}", "500")
-
-
 def writer_user(payload: dict) -> str:
     import json
     return json.dumps(payload, ensure_ascii=False, indent=2)
