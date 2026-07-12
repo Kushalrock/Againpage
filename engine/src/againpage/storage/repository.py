@@ -317,6 +317,11 @@ class Repository:
     async def replace_clustering(self, user_id, clusters: list[ClusterInput]) -> None:
         async with self.pool.connection() as conn:
             async with conn.transaction():
+                # FK-safe: null issue references first (issues.theme_id has no
+                # ON DELETE action, and issues keep a standalone theme_label
+                # snapshot, so the displayed theme survives). Matches swap_reindex.
+                await conn.execute(
+                    "UPDATE issues SET theme_id=NULL WHERE user_id=%s AND theme_id IS NOT NULL", (user_id,))
                 await conn.execute(
                     """DELETE FROM note_themes WHERE theme_id IN
                        (SELECT id FROM themes WHERE user_id=%s)""", (user_id,))
