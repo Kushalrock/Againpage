@@ -9,6 +9,22 @@ import { editionNotifyTime, notifyEnabled, setNotifyEnabled } from '../../lib/no
 
 const NOTES_OPTIONS = [2, 3, 4, 5]
 
+// A guaranteed set of common IANA zones. Some webviews return an empty or
+// partial Intl.supportedValuesOf('timeZone'), so we never rely on it alone.
+const COMMON_TIMEZONES = [
+  'UTC',
+  'Asia/Kolkata', 'Asia/Dubai', 'Asia/Karachi', 'Asia/Dhaka', 'Asia/Kathmandu',
+  'Asia/Bangkok', 'Asia/Singapore', 'Asia/Hong_Kong', 'Asia/Shanghai', 'Asia/Tokyo',
+  'Asia/Seoul', 'Asia/Jakarta', 'Asia/Jerusalem', 'Asia/Tehran',
+  'Europe/London', 'Europe/Dublin', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid',
+  'Europe/Rome', 'Europe/Amsterdam', 'Europe/Moscow', 'Europe/Istanbul',
+  'America/New_York', 'America/Chicago', 'America/Denver', 'America/Phoenix',
+  'America/Los_Angeles', 'America/Toronto', 'America/Mexico_City', 'America/Sao_Paulo',
+  'America/Argentina/Buenos_Aires',
+  'Africa/Cairo', 'Africa/Johannesburg', 'Africa/Lagos', 'Africa/Nairobi',
+  'Australia/Sydney', 'Australia/Perth', 'Pacific/Auckland', 'Pacific/Honolulu',
+]
+
 const segStyle = (active: boolean) => ({
   background: active ? color.dark : color.card,
   color: active ? color.paper : color.muted,
@@ -69,12 +85,16 @@ export function PreferencesPanel({
   const target = status.data?.next_edition_at ?? projected
   const cd = useCountdown(target)
 
+  // Suggestions = curated commons ∪ whatever the webview offers ∪ the device
+  // zone ∪ the current value (which may be a legacy alias like Asia/Calcutta).
+  // The control is a free-text input, so any valid IANA name can be typed even
+  // if it isn't suggested; the engine validates it on save.
   const canonicalZones: string[] =
     typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []
-  // The current value may be an obsolete alias the canonical list omits (e.g.
-  // "Asia/Calcutta" from an older OS). Always include it so it shows selected
-  // rather than silently displaying the wrong zone.
-  const zones = canonicalZones.includes(tz) ? canonicalZones : [tz, ...canonicalZones]
+  const deviceZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const zoneSuggestions = Array.from(
+    new Set([tz, deviceZone, ...COMMON_TIMEZONES, ...canonicalZones].filter(Boolean)),
+  ).sort()
 
   function saveDelivery() {
     if (deliveryDirty) onChange({ delivery_time: deliveryTime, timezone: tz })
@@ -141,19 +161,14 @@ export function PreferencesPanel({
         <div>
           <div style={{ fontSize: 14, color: color.muted, marginBottom: 10 }}>Timezone</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            {zones.length > 0 ? (
-              <select aria-label="Timezone" value={tz}
-                onChange={(e) => setTz(e.target.value)}
-                style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
-                  padding: '10px 14px', fontSize: 15, color: color.inkStrong, maxWidth: '100%' }}>
-                {zones.map((z) => <option key={z} value={z}>{z}</option>)}
-              </select>
-            ) : (
-              <input aria-label="Timezone" value={tz} placeholder="Asia/Kolkata"
-                onChange={(e) => setTz(e.target.value)}
-                style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
-                  padding: '10px 14px', fontSize: 15, color: color.inkStrong, fontFamily: "'Source Code Pro', monospace" }} />
-            )}
+            <input aria-label="Timezone" list="ap-timezones" value={tz} placeholder="Asia/Kolkata"
+              onChange={(e) => setTz(e.target.value)}
+              style={{ background: color.card, border: `1px solid ${color.borderStrong}`, borderRadius: 5,
+                padding: '10px 14px', fontSize: 15, color: color.inkStrong, maxWidth: '100%',
+                fontFamily: "'Source Code Pro', monospace" }} />
+            <datalist id="ap-timezones">
+              {zoneSuggestions.map((z) => <option key={z} value={z} />)}
+            </datalist>
           </div>
           <div style={{ fontSize: 13, color: color.faint, marginTop: 8, fontStyle: 'italic' }}>
             Editions are scheduled at your delivery time in this zone — set it to where you are, not the server.

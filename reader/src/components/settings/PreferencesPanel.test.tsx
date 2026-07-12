@@ -76,13 +76,21 @@ test('the device-timezone quick-fill button is gone', () => {
   expect(screen.queryByRole('button', { name: /use this device/i })).not.toBeInTheDocument()
 })
 
-test('a saved timezone missing from the canonical list still shows as selected', () => {
-  // "Asia/Calcutta" is an obsolete alias Intl.supportedValuesOf omits; the
-  // control must still surface the saved value instead of silently defaulting.
+test('a saved timezone (even a legacy alias) shows in the input', () => {
+  // "Asia/Calcutta" is an obsolete alias some OSes still report; the free-text
+  // input must surface it instead of silently defaulting.
   wrap(() => {}, { ...base, timezone: 'Asia/Calcutta' })
-  const tz = screen.getByLabelText(/timezone/i) as HTMLSelectElement
+  const tz = screen.getByLabelText(/timezone/i) as HTMLInputElement
   expect(tz.value).toBe('Asia/Calcutta')
-  expect(Array.from(tz.querySelectorAll('option')).some((o) => o.value === 'Asia/Calcutta')).toBe(true)
+})
+
+test('Asia/Kolkata is always offered as a suggestion, regardless of the webview', () => {
+  // The webview's Intl.supportedValuesOf may be empty/partial; common zones are
+  // guaranteed from the curated list so the field is always usable.
+  const { container } = wrap(() => {})
+  const values = Array.from(container.querySelectorAll('datalist#ap-timezones option')).map((o) => o.getAttribute('value'))
+  expect(values).toContain('Asia/Kolkata')
+  expect(values).toContain('UTC')
 })
 
 import { vi } from 'vitest'
