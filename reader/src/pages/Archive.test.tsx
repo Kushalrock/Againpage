@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ClientContext } from '../api/queries'
 import type { ApiClient } from '../api/client'
@@ -42,4 +42,31 @@ test('populated → grouped archive + onOpen', async () => {
 test('header spells out the real edition count, not a hardcoded number', async () => {
   wrap(mk(S({}), true))                                    // ARCHIVE.total === 7
   expect(await screen.findByText(/Seven mornings, and counting\./i)).toBeInTheDocument()
+})
+test('defaults to the Active filter and hides inactive editions', async () => {
+  wrap(mk(S({}), true))
+  expect(await screen.findByText(/Amor Fati/i)).toBeInTheDocument()
+  expect(screen.queryByText(/Borrowed Light/i)).not.toBeInTheDocument()
+  expect(screen.queryByText(/The Patience of Trees/i)).not.toBeInTheDocument()
+})
+test('Inactive filter shows only inactive; All shows both', async () => {
+  wrap(mk(S({}), true))
+  await screen.findByText(/Amor Fati/i)
+  fireEvent.click(screen.getByRole('button', { name: /^inactive$/i }))
+  expect(screen.getByText(/Borrowed Light/i)).toBeInTheDocument()
+  expect(screen.queryByText(/Amor Fati/i)).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: /^all$/i }))
+  expect(screen.getByText(/Borrowed Light/i)).toBeInTheDocument()
+  expect(screen.getByText(/Amor Fati/i)).toBeInTheDocument()
+})
+test('favourite and inactive toggles fire setIssueFlags', async () => {
+  const calls: unknown[] = []
+  const spyClient: ApiClient = { ...mk(S({}), true),
+    setIssueFlags: async (id, patch) => { calls.push({ id, patch }); return { id, active: patch.active ?? true, favorite: patch.favorite ?? false } } }
+  wrap(spyClient)
+  await screen.findByText(/Amor Fati/i)
+  fireEvent.click(screen.getAllByRole('button', { name: /^favourite$/i })[0])
+  await waitFor(() => expect(calls.at(-1)).toMatchObject({ patch: { favorite: expect.any(Boolean) } }))
+  fireEvent.click(screen.getAllByRole('button', { name: /move to inactive/i })[0])
+  await waitFor(() => expect(calls.at(-1)).toMatchObject({ patch: { active: expect.any(Boolean) } }))
 })

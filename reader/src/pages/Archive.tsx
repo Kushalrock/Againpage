@@ -1,13 +1,21 @@
-import { useArchive, useStatus } from '../api/queries'
+import { useState } from 'react'
+import { useArchive, useStatus, useSetIssueFlags } from '../api/queries'
 import { color, font } from '../theme/tokens'
 import { spellOutCount } from '../lib/masthead'
+import type { ArchiveItem } from '../types/archive'
 
 export function Archive({ onOpen, onNavigate }: { onOpen: (id: string) => void; onNavigate?: (screen: string) => void }) {
   const status = useStatus()
   const archive = useArchive()
+  const setFlags = useSetIssueFlags()
+  const [filter, setFilter] = useState<'active' | 'inactive' | 'all'>('active')
   if (status.isLoading || archive.isLoading) return <div style={{ padding: 48 }}>Loading…</div>
   const s = status.data!
   const groups = archive.data?.groups ?? []
+  const shown = groups
+    .map((g) => ({ ...g, items: g.items.filter((it) =>
+      filter === 'all' ? true : filter === 'active' ? it.active : !it.active) }))
+    .filter((g) => g.items.length > 0)
   const empty = (archive.data?.total ?? 0) === 0
   const whenLabel = (iso: string | null) => iso ? new Date(iso).toLocaleString('en-GB',
     { weekday: 'long', hour: 'numeric', minute: '2-digit', hour12: true }) : ''
@@ -32,6 +40,26 @@ export function Archive({ onOpen, onNavigate }: { onOpen: (id: string) => void; 
       </div>
     )
   }
+  const seg = (v: 'active' | 'inactive' | 'all', label: string) => (
+    <button type="button" aria-label={label} onClick={() => setFilter(v)}
+      style={{ padding: '7px 14px', fontSize: 13, cursor: 'pointer', borderRadius: 5,
+        border: `1px solid ${color.borderStrong}`,
+        background: filter === v ? color.dark : 'transparent',
+        color: filter === v ? color.paper : color.muted }}>{label}</button>
+  )
+  const favBtn = (it: ArchiveItem) => (
+    <button type="button" aria-label={it.favorite ? 'unfavourite' : 'favourite'}
+      onClick={(e) => { e.stopPropagation(); setFlags.mutate({ id: it.id, patch: { favorite: !it.favorite } }) }}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18,
+        color: it.favorite ? color.accent : color.faint }}>{it.favorite ? '★' : '☆'}</button>
+  )
+  const activeBtn = (it: ArchiveItem) => (
+    <button type="button" aria-label={it.active ? 'move to inactive' : 'restore'}
+      title={it.active ? 'Move to inactive' : 'Restore'}
+      onClick={(e) => { e.stopPropagation(); setFlags.mutate({ id: it.id, patch: { active: !it.active } }) }}
+      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 15,
+        color: color.faint }}>{it.active ? '⌦' : '↩'}</button>
+  )
   return (
     <div style={{ maxWidth: 920, margin: '0 auto', padding: 'clamp(40px,6vw,72px) clamp(24px,5vw,40px) 80px' }}>
       <header style={{ textAlign: 'center', borderBottom: `2px solid ${color.dark}`, paddingBottom: 28 }}>
@@ -46,8 +74,11 @@ export function Archive({ onOpen, onNavigate }: { onOpen: (id: string) => void; 
           Every edition Againpage has composed for you. {spellOutCount(archive.data?.total ?? 0)}{' '}
           {(archive.data?.total ?? 0) === 1 ? 'morning' : 'mornings'}, and counting.
         </p>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 18 }}>
+          {seg('active', 'Active')}{seg('inactive', 'Inactive')}{seg('all', 'All')}
+        </div>
       </header>
-      {groups.map((g) => (
+      {shown.map((g) => (
         <div key={g.label} style={{ marginTop: 40 }}>
           <div style={{ fontSize: 11, letterSpacing: '.2em', textTransform: 'uppercase', color: color.faint,
             fontWeight: 600, marginBottom: 6 }}>
@@ -84,6 +115,10 @@ export function Archive({ onOpen, onNavigate }: { onOpen: (id: string) => void; 
                 <div style={{ flex: '0 0 auto', textAlign: 'right' }}>
                   <div style={{ fontSize: 13, color: color.faint }}>{it.date}</div>
                   <div style={{ fontSize: 13, color: color.faint, marginTop: 4 }}>{it.reading_min} min</div>
+                  <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 8 }}>
+                    {favBtn(it)}
+                    {activeBtn(it)}
+                  </div>
                 </div>
               </div>
             </button>
