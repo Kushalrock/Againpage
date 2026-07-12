@@ -17,6 +17,17 @@ class ArchiveItem(BaseModel):
     dek: str
     tags: list[str]
     reading_min: int
+    active: bool
+    favorite: bool
+
+class IssueFlagsPatch(BaseModel):
+    active: bool | None = None
+    favorite: bool | None = None
+
+class IssueFlags(BaseModel):
+    id: str
+    active: bool
+    favorite: bool
 
 class ArchiveGroup(BaseModel):
     label: str

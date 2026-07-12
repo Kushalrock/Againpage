@@ -6,7 +6,8 @@ from fastapi import APIRouter, HTTPException
 from againpage.storage.repository import Repository
 from againpage.core.models import IssueContent, IssueRow, SettingsRow
 from againpage.api.schemas import (IssueResponse, ArchiveItem, ArchiveGroup, ArchiveResponse,
-    SettingsResponse, ProviderTestRequest, ProviderTestResult, VaultStatus, NoteExpansion)
+    SettingsResponse, ProviderTestRequest, ProviderTestResult, VaultStatus, NoteExpansion,
+    IssueFlagsPatch, IssueFlags)
 from againpage.queue.queue import Queue
 from againpage.providers.factory import make_provider
 from againpage.vault.scan import scan_vaults
@@ -83,6 +84,13 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
             raise HTTPException(404, "not found")
         return _to_response(row)
 
+    @r.patch("/issues/{issue_id}")
+    async def set_issue_flags(issue_id: UUID, patch: IssueFlagsPatch) -> IssueFlags:
+        row = await repo.set_issue_flags(issue_id, active=patch.active, favorite=patch.favorite)
+        if row is None:
+            raise HTTPException(404, "issue not found")
+        return IssueFlags(id=str(row.id), active=row.active, favorite=row.favorite)
+
     @r.get("/issues")
     async def archive():
         uid = await repo.ensure_local_user()
@@ -93,7 +101,8 @@ def make_router(repo: Repository, queue: Queue | None = None) -> APIRouter:
             c = IssueContent(**row.content)
             item = ArchiveItem(
                 id=str(row.id), issue_no=row.issue_no or 0, date=row.issue_date.isoformat(),
-                title=c.title, dek=c.standfirst, tags=[], reading_min=row.reading_min)
+                title=c.title, dek=c.standfirst, tags=[], reading_min=row.reading_min,
+                active=row.active, favorite=row.favorite)
             groups.setdefault(_group_label(row.issue_date, today_d), []).append(item)
         return ArchiveResponse(
             groups=[ArchiveGroup(label=k, items=v) for k, v in groups.items()],
