@@ -1,4 +1,5 @@
-import { useReindex, useTriggerIssue, useCancelJobs, useStatus } from '../../api/queries'
+import { useState } from 'react'
+import { useReindex, useTriggerIssue, useCancelJobs, useStatus, useSaveSettings } from '../../api/queries'
 import { EditorialPrompts } from './EditorialPrompts'
 import { color } from '../../theme/tokens'
 import type { Settings } from '../../types/settings'
@@ -16,6 +17,14 @@ export function AdvancedPanel({ noteCount, settings }: { noteCount: number; sett
   const reindex = useReindex()
   const generate = useTriggerIssue()
   const cancel = useCancelJobs()
+  const save = useSaveSettings()
+  const [interval, setInterval_] = useState(settings.sync_interval_minutes)
+  function saveInterval() {
+    const n = Math.trunc(Number(interval) || 0)
+    const clamped = n <= 0 ? 0 : Math.max(30, n)   // 0 = off, else >= 30
+    setInterval_(clamped)
+    save.mutate({ sync_interval_minutes: clamped })
+  }
   // Poll status while the Settings page is open so the buttons reflect job
   // state (disable while running, re-enable when done) within a couple seconds.
   const status = useStatus({ refetchInterval: 2500 })
@@ -55,6 +64,16 @@ export function AdvancedPanel({ noteCount, settings }: { noteCount: number; sett
               Generate embeddings first — run “Re-index notes &amp; embeddings” above.
             </p>
           )}
+        </div>
+        <div>
+          <label htmlFor="sync-interval" style={{ fontSize: 14, color: color.muted }}>Auto-sync every (minutes, 0 = off, min 30)</label>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 6 }}>
+            <input id="sync-interval" aria-label="auto-sync every" type="number" min={0} step={1} value={interval}
+              onChange={(e) => setInterval_(Math.trunc(+e.target.value))} onBlur={saveInterval}
+              style={{ width: 90, background: color.card, border: `1px solid ${color.borderStrong}`,
+                borderRadius: 5, padding: '8px 10px', fontSize: 14, color: color.inkStrong }} />
+            <span style={{ fontSize: 13, color: color.faint }}>{interval === 0 ? 'off' : `every ${interval} min`}</span>
+          </div>
         </div>
       </div>
       <EditorialPrompts settings={settings} />

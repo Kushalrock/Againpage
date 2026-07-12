@@ -5,6 +5,7 @@ export interface Settings {
   provider: Provider; ollama_endpoint: string;
   embed_model: string; summary_model: string; writer_model: string;
   writer_prompt: string; note_expand_prompt: string; note_expand_words: number;
+  sync_interval_minutes: number;
   has_openrouter_key?: boolean; has_ollama_key?: boolean;   // returned: whether a key is saved
   openrouter_key?: string; ollama_key?: string;             // write-only in a patch; never returned
 }

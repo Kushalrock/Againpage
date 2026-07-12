@@ -344,6 +344,7 @@ const SETTINGS: Settings = {
   writer_prompt: '',
   note_expand_prompt: '',
   note_expand_words: 500,
+  sync_interval_minutes: 60,
 }
 const vaultNoteCount = 1284
 

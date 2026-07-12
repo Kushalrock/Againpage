@@ -3,15 +3,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ClientContext } from '../../api/queries'
 import type { ApiClient } from '../../api/client'
 import type { AppStatus } from '../../types/status'
-import type { Settings } from '../../types/settings'
+import type { Settings, SettingsPatch } from '../../types/settings'
 import { AdvancedPanel } from './AdvancedPanel'
 
-type Spy = { reindex: number; trigger: number; cancel: string[] }
+type Spy = { reindex: number; trigger: number; cancel: string[]; saved: SettingsPatch[] }
 
 const base: Settings = { vault_paths: [], excluded_paths: [], profile_text: '',
   cadence_days: 1, delivery_time: '07:00', timezone: 'UTC', reading_min: 7, notes_per_issue: 3,
   provider: 'openrouter', ollama_endpoint: '', embed_model: '', summary_model: '', writer_model: '',
-  writer_prompt: '', note_expand_prompt: '', note_expand_words: 500 }
+  writer_prompt: '', note_expand_prompt: '', note_expand_words: 500, sync_interval_minutes: 60 }
 
 const S = (active: string[], indexed = true): AppStatus => ({ indexed, theme_count: indexed ? 1 : 0,
   note_count: 5, issue_count: 0, latest_issue_date: null, next_edition_at: null, delivery_time: '07:00',
@@ -21,7 +21,8 @@ function client(spy: Spy, active: string[], indexed = true): ApiClient {
   return {
     getTodayIssue: async () => ({}) as never, getIssue: async () => ({}) as never,
     getArchive: async () => ({}) as never, getSettings: async () => ({}) as never,
-    saveSettings: async () => ({}) as never, getStatus: async () => S(active, indexed),
+    saveSettings: async (patch: SettingsPatch) => { spy.saved.push(patch); return { ...base, ...patch, vault_note_count: 0 } as never },
+    getStatus: async () => S(active, indexed),
     reindex: async () => { spy.reindex++; return { job_id: 'i' } },
     triggerIssue: async () => { spy.trigger++; return { job_id: 'g' } },
     cancelJobs: async (t: string) => { spy.cancel.push(t); return { cancelled: 1 } },
@@ -31,7 +32,7 @@ function client(spy: Spy, active: string[], indexed = true): ApiClient {
   }
 }
 function wrap(active: string[] = [], indexed = true) {
-  const spy: Spy = { reindex: 0, trigger: 0, cancel: [] }
+  const spy: Spy = { reindex: 0, trigger: 0, cancel: [], saved: [] }
   const qc = new QueryClient()
   render(<QueryClientProvider client={qc}>
     <ClientContext.Provider value={client(spy, active, indexed)}><AdvancedPanel noteCount={42} settings={base} /></ClientContext.Provider>
@@ -84,4 +85,15 @@ test('Generate is disabled with a nudge until embeddings exist', async () => {
 test('shows how many themes were generated beside re-index', async () => {
   wrap([])                                           // S() sets theme_count: 1 when indexed
   expect(await screen.findByText(/42 notes · 1 theme\./i)).toBeInTheDocument()
+})
+
+test('sync interval saves; snaps 1..29 up to 30; keeps 0', async () => {
+  const spy = wrap([])
+  const input = screen.getByLabelText(/auto-sync every/i)
+  fireEvent.change(input, { target: { value: '15' } })
+  fireEvent.blur(input)
+  await waitFor(() => expect(spy.saved.at(-1)).toEqual({ sync_interval_minutes: 30 }))
+  fireEvent.change(input, { target: { value: '0' } })
+  fireEvent.blur(input)
+  await waitFor(() => expect(spy.saved.at(-1)).toEqual({ sync_interval_minutes: 0 }))
 })

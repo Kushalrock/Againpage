@@ -45,7 +45,7 @@ test('Reader compose-themes CTA navigates to Settings when not indexed', async (
     provider: 'openrouter', ollama_endpoint: '',
     embed_model: 'openai/text-embedding-3-small', summary_model: 'openai/gpt-4o-mini',
     writer_model: 'anthropic/claude-3.5-sonnet', vault_note_count: 1284,
-    writer_prompt: '', note_expand_prompt: '', note_expand_words: 500,
+    writer_prompt: '', note_expand_prompt: '', note_expand_words: 500, sync_interval_minutes: 60,
   }
   const notIndexedClient: ApiClient = {
     getTodayIssue: async () => { throw new Error('not found') },
