@@ -1,11 +1,14 @@
 from __future__ import annotations
 import hashlib
+import logging
 from pathlib import Path, PurePosixPath
 from uuid import UUID
 from againpage.core.models import NewNote, LinkEdge, SettingsRow
 from againpage.storage.repository import Repository
 from againpage.providers.base import Provider
 from againpage.vault import scan, frontmatter, links
+
+log = logging.getLogger(__name__)
 
 def content_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
@@ -46,12 +49,18 @@ async def ingest_vault(vault_paths: list[str], *, repo: Repository, provider: Pr
                        settings: SettingsRow, user_id: UUID, cancelled=None) -> dict:
     paths = scan.scan_vaults(vault_paths, excluded=settings.excluded_paths)
     known = _known_map(paths)
-    counts = {"ingested": 0, "skipped": 0, "pruned": 0, "cancelled": False}
+    counts = {"ingested": 0, "skipped": 0, "pruned": 0, "failed": 0, "cancelled": False}
     for p in paths:
         if cancelled is not None and await cancelled():
             counts["cancelled"] = True
+            counts["scanned"] = len(paths)
             return counts
-        counts[await ingest_file(p, repo=repo, provider=provider, settings=settings,
-                                 user_id=user_id, known=known)] += 1
+        try:
+            counts[await ingest_file(p, repo=repo, provider=provider, settings=settings,
+                                     user_id=user_id, known=known)] += 1
+        except Exception:  # noqa: BLE001 — one bad note must not abort the whole sync
+            log.warning("ingest failed for %s", p, exc_info=True)
+            counts["failed"] += 1
+    counts["scanned"] = len(paths)
     counts["deactivated"] = await repo.deactivate_missing(user_id, set(paths))
     return counts
