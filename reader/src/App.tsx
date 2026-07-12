@@ -2,13 +2,14 @@ import { useState } from 'react'
 import { AppShell } from './components/shell/AppShell'
 import { Reader } from './pages/Reader'
 import { Archive } from './pages/Archive'
+import { Favourites } from './pages/Favourites'
 import { Settings } from './pages/Settings'
 import { Onboarding } from './pages/Onboarding'
 import { useSettings } from './api/queries'
 import { Connecting, Unreachable } from './components/ConnectionStates'
 import { apiBase, storedApiBase } from './api/base'
 
-type Screen = 'reader' | 'archive' | 'settings'
+type Screen = 'reader' | 'archive' | 'favourites' | 'settings'
 
 export default function App() {
   const { data: settings, isLoading, isError, refetch } = useSettings()
@@ -44,6 +45,7 @@ export default function App() {
       {screen === 'archive' && (
         <Archive onOpen={(id) => { setIssueId(id); setScreen('reader') }} onNavigate={(s) => navigate(s as Screen)} />
       )}
+      {screen === 'favourites' && <Favourites onOpen={(id) => { setIssueId(id); setScreen('reader') }} />}
       {screen === 'settings' && <Settings />}
     </AppShell>
   )

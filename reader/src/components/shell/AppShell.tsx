@@ -4,11 +4,12 @@ import { useSettings, useStatus } from '../../api/queries'
 import { volumeLabel } from '../../lib/masthead'
 import { Logo } from '../Logo'
 
-export type Screen = 'reader' | 'archive' | 'settings'
+export type Screen = 'reader' | 'archive' | 'favourites' | 'settings'
 
 const NAV_ITEMS: { key: Screen; label: string }[] = [
   { key: 'reader', label: 'Reader' },
   { key: 'archive', label: 'The Archive' },
+  { key: 'favourites', label: 'Favourites' },
   { key: 'settings', label: 'Settings' },
 ]
 
