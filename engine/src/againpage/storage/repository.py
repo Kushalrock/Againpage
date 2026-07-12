@@ -79,7 +79,8 @@ def _issue_row(d: dict) -> IssueRow:
         id=d["id"], user_id=d["user_id"], issue_no=d["issue_no"], issue_date=d["issue_date"],
         theme_id=d["theme_id"], theme_label=d["theme_label"], reading_min=d["reading_min"],
         word_target=d["word_target"], content=d["content"], payload=d["payload"],
-        model=d["model"], status=d["status"], synced_at=d["synced_at"], created_at=d["created_at"])
+        model=d["model"], status=d["status"], synced_at=d["synced_at"], created_at=d["created_at"],
+        active=d["active"], favorite=d["favorite"])
 
 def _parse_vector(value) -> list[float] | None:
     # pgvector's psycopg adapter decodes `vector` columns to list[float] once
@@ -171,6 +172,23 @@ class Repository:
         async with self.pool.connection() as conn:
             conn.row_factory = dict_row
             cur = await conn.execute("SELECT * FROM issues WHERE id=%s", (issue_id,))
+            row = await cur.fetchone()
+            return _issue_row(row) if row else None
+
+    async def set_issue_flags(self, issue_id: UUID, *, active: bool | None = None,
+                              favorite: bool | None = None) -> IssueRow | None:
+        sets: dict[str, bool] = {}
+        if active is not None:
+            sets["active"] = active
+        if favorite is not None:
+            sets["favorite"] = favorite
+        if not sets:
+            return await self.get_issue(issue_id)
+        cols = ", ".join(f"{k}=%s" for k in sets)
+        async with self.pool.connection() as conn:
+            conn.row_factory = dict_row
+            cur = await conn.execute(
+                f"UPDATE issues SET {cols} WHERE id=%s RETURNING *", (*sets.values(), issue_id))
             row = await cur.fetchone()
             return _issue_row(row) if row else None
 

@@ -80,6 +80,8 @@ class IssueRow:
     status: str
     synced_at: datetime | None
     created_at: datetime
+    active: bool = True
+    favorite: bool = False
 
 @dataclass
 class NewIssue:
