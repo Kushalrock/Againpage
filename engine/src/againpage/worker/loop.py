@@ -83,13 +83,15 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     log.info("worker ready — polling the job queue (Ctrl+C to stop)")
     # Best-effort file watcher(s) — may not fire on Docker/network FS; the
     # periodic below is the reliable path. Never crash the worker if it fails.
+    debouncers = []
     try:
         s0 = await repo.get_settings(await repo.ensure_local_user())
         if s0 and s0.vault_paths:
             from againpage.vault.watcher import start_watcher
             for vp in s0.vault_paths:
                 try:
-                    start_watcher(vp, queue)
+                    res = start_watcher(vp, queue)
+                    debouncers.append(res[1])   # (obs, deb) -> keep the Debouncer to pump
                 except Exception:  # noqa: BLE001
                     log.warning("vault watcher failed to start for %s", vp, exc_info=True)
     except Exception:  # noqa: BLE001
@@ -97,6 +99,9 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
     last_sync = _t.monotonic()
     last_check = 0.0
     while True:
+        for d in debouncers:
+            d.maybe_flush()
+
         # Scheduler heartbeat — must run every ~60s regardless of queue activity,
         # so scheduled editions fire even when the queue is idle (the normal
         # state). Pass an aware UTC instant; the scheduler converts it to the
