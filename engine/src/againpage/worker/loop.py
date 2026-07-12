@@ -171,17 +171,33 @@ def main() -> None:  # pragma: no cover
     async def _amain() -> None:
         if loaded:
             log.info(".env loaded from %s", ", ".join(str(p) for p in loaded))
-        # Surface whether provider keys are present (masked) — the #1 cause of
-        # ingest/generate failures is a missing OPENROUTER_API_KEY.
-        log.info("provider keys: openrouter=%s ollama=%s",
-                 "set" if os.environ.get("OPENROUTER_API_KEY") else "MISSING",
-                 "set" if os.environ.get("OLLAMA_API_KEY") else "unset (fine for local Ollama)")
+        # Environment-variable keys are only the fallback — keys configured in
+        # the reader's Settings are stored in the DB and used too (reported
+        # below, once the DB is up). So an env var being unset here is NOT an
+        # error on its own.
+        log.info("provider env vars: OPENROUTER_API_KEY=%s OLLAMA_API_KEY=%s",
+                 "set" if os.environ.get("OPENROUTER_API_KEY") else "unset",
+                 "set" if os.environ.get("OLLAMA_API_KEY") else "unset")
         log.info("starting worker (DATABASE_URL=%s)", dsn)
         await db.ensure_vector_extension(dsn)   # fresh DB: create pgvector ext before the pool
         pool = db.make_pool(dsn, open=False)
         await pool.open()
         await migrate.apply(pool)
         log.info("connected to database, migrations applied")
+        # Report the EFFECTIVE provider key — from Settings (DB) or the env
+        # fallback — so a key configured in the reader isn't misreported as
+        # missing. A missing key for the active provider is the #1 cause of
+        # ingest/generate failures.
+        from againpage.storage.repository import Repository
+        _repo = Repository(pool)
+        _s = await _repo.get_settings(await _repo.ensure_local_user())
+        _prov = _s.provider if _s else "openrouter"
+        _or_key = bool((_s and _s.openrouter_key) or os.environ.get("OPENROUTER_API_KEY"))
+        if _prov == "openrouter":
+            log.info("active provider: openrouter · api key=%s", "set" if _or_key
+                     else "MISSING (set it in the reader → Settings → AI source, or OPENROUTER_API_KEY)")
+        else:
+            log.info("active provider: %s (openrouter key %s)", _prov, "set" if _or_key else "unset")
         await run_worker(pool, make_provider)
 
     asyncio.run(_amain())
