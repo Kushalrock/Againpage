@@ -46,6 +46,7 @@ test('Reader compose-themes CTA navigates to Settings when not indexed', async (
     embed_model: 'openai/text-embedding-3-small', summary_model: 'openai/gpt-4o-mini',
     writer_model: 'anthropic/claude-3.5-sonnet', vault_note_count: 1284,
     writer_prompt: '', note_expand_prompt: '', note_expand_words: 500, sync_interval_minutes: 60,
+    engine_version: '0.1.4', min_reader_version: '0.1.0',
   }
   const notIndexedClient: ApiClient = {
     getTodayIssue: async () => { throw new Error('not found') },
@@ -123,5 +124,54 @@ describe('App connection state machine', () => {
     expect(screen.queryByText(/the newsroom isn't answering/i)).not.toBeInTheDocument()
     // onboarding welcome renders (its first-screen copy)
     expect(await screen.findByText(/Begin/i)).toBeInTheDocument()
+  })
+})
+
+describe('App version compatibility gate', () => {
+  const baseSettings: SettingsResponse = {
+    vault_paths: ['/v'], excluded_paths: [], profile_text: '',
+    cadence_days: 1, delivery_time: '07:00', timezone: 'UTC', reading_min: 7, notes_per_issue: 3,
+    provider: 'openrouter', ollama_endpoint: '',
+    embed_model: 'openai/text-embedding-3-small', summary_model: 'openai/gpt-4o-mini',
+    writer_model: 'anthropic/claude-3.5-sonnet', vault_note_count: 1284,
+    writer_prompt: '', note_expand_prompt: '', note_expand_words: 500, sync_interval_minutes: 60,
+    engine_version: '0.1.4', min_reader_version: '0.1.0',
+  }
+  const baseClient: ApiClient = {
+    getTodayIssue: async () => { throw new Error('not found') },
+    getIssue: async () => { throw new Error('not found') },
+    getArchive: async () => ({ groups: [], total: 0 }),
+    getSettings: async () => baseSettings,
+    saveSettings: async (patch) => ({ ...baseSettings, ...patch }),
+    getStatus: async () => ({
+      indexed: false, theme_count: 0, note_count: 0, issue_count: 0,
+      latest_issue_date: null, next_edition_at: null, delivery_time: '07:00', cadence_days: 1, active_jobs: [],
+    }),
+    reindex: async () => ({ job_id: 'test-ingest' }),
+    triggerIssue: async () => ({ job_id: 'test-generate' }),
+    cancelJobs: async () => ({ cancelled: 0 }),
+    expandNote: async () => ({ title: '', text: '' }),
+    setIssueFlags: async () => ({}) as never,
+    getPromptDefaults: async () => ({ writer: 'DEFAULT WRITER VOICE', note_expand: 'DEFAULT NOTE-EXPAND VOICE' }),
+  }
+
+  test('engine too old (below MIN_ENGINE) shows the VersionMismatch page', async () => {
+    const oldEngine: SettingsResponse = { ...baseSettings, engine_version: '0.1.3' }
+    const client: ApiClient = { ...baseClient, getSettings: async () => oldEngine }
+    const qc = new QueryClient()
+    render(<QueryClientProvider client={qc}>
+      <ClientContext.Provider value={client}><App /></ClientContext.Provider>
+    </QueryClientProvider>)
+    expect(await screen.findByText(/fallen behind/i)).toBeInTheDocument()
+  })
+
+  test('reader too old (below engine min_reader_version) shows the VersionMismatch page', async () => {
+    const newEngine: SettingsResponse = { ...baseSettings, engine_version: '9.9.9', min_reader_version: '9.9.9' }
+    const client: ApiClient = { ...baseClient, getSettings: async () => newEngine }
+    const qc = new QueryClient()
+    render(<QueryClientProvider client={qc}>
+      <ClientContext.Provider value={client}><App /></ClientContext.Provider>
+    </QueryClientProvider>)
+    expect(await screen.findByText(/update your reader/i)).toBeInTheDocument()
   })
 })

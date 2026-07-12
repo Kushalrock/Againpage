@@ -352,10 +352,11 @@ export const fixtureClient: ApiClient = {
   getTodayIssue: async () => AMOR_FATI,
   getIssue: async () => AMOR_FATI,
   getArchive: async () => ARCHIVE,
-  getSettings: async (): Promise<SettingsResponse> => ({ ...SETTINGS, vault_note_count: vaultNoteCount }),
+  getSettings: async (): Promise<SettingsResponse> => ({ ...SETTINGS, vault_note_count: vaultNoteCount,
+    engine_version: '0.1.4', min_reader_version: '0.1.0' }),
   saveSettings: async (patch: SettingsPatch): Promise<SettingsResponse> => {
     Object.assign(SETTINGS, patch)
-    return { ...SETTINGS, vault_note_count: vaultNoteCount }
+    return { ...SETTINGS, vault_note_count: vaultNoteCount, engine_version: '0.1.4', min_reader_version: '0.1.0' }
   },
   getStatus: async () => STATUS,
   reindex: async () => ({ job_id: 'fixture-ingest' }),

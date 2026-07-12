@@ -9,7 +9,11 @@ export interface Settings {
   has_openrouter_key?: boolean; has_ollama_key?: boolean;   // returned: whether a key is saved
   openrouter_key?: string; ollama_key?: string;             // write-only in a patch; never returned
 }
-export type SettingsResponse = Settings & { vault_note_count: number };
+export type SettingsResponse = Settings & {
+  vault_note_count: number;
+  engine_version?: string;      // response-only; absent on an engine too old to advertise it
+  min_reader_version?: string;
+};
 export type SettingsPatch = Partial<Settings>;
 export interface ProviderTestRequest { provider: Provider; ollama_endpoint: string; embed_model: string; summary_model: string; writer_model: string; }
 export interface ProviderTestResult { ok: boolean; reachable: boolean; models: Record<string, boolean>; detail: string; }

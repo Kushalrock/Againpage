@@ -9,6 +9,9 @@ import { useSettings, useStatus } from './api/queries'
 import { Connecting, Unreachable } from './components/ConnectionStates'
 import { apiBase, storedApiBase } from './api/base'
 import { useEditionNotifications } from './hooks/useEditionNotifications'
+import { VersionMismatch } from './components/VersionMismatch'
+import { checkCompat } from './lib/versionCompat'
+import { READER_VERSION, MIN_ENGINE_VERSION } from './version'
 
 type Screen = 'reader' | 'archive' | 'favourites' | 'settings'
 
@@ -37,6 +40,26 @@ export default function App() {
         secondary={{ label: 'Point to another press', onClick: () => setReOnboard(true) }}
       />
     )
+  }
+  if (settings) {
+    const compat = checkCompat({
+      engineVersion: settings.engine_version,
+      minReader: settings.min_reader_version ?? '0.0.0',
+      readerVersion: READER_VERSION,
+      minEngine: MIN_ENGINE_VERSION,
+    })
+    if (compat !== 'ok') {
+      return (
+        <VersionMismatch
+          kind={compat}
+          engineVersion={settings.engine_version}
+          readerVersion={READER_VERSION}
+          minEngine={MIN_ENGINE_VERSION}
+          minReader={settings.min_reader_version ?? '0.0.0'}
+          onRetry={() => { void refetch() }}
+        />
+      )
+    }
   }
   const needsOnboarding = reOnboard || (!onboarded && !settings?.vault_paths?.length)
   if (needsOnboarding) {
