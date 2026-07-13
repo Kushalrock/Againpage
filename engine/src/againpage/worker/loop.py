@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import logging
+import httpx
 from datetime import date, datetime, timedelta, timezone
 from againpage.core.models import SettingsRow, NewIssue
 from againpage.queue.queue import Queue, Job
@@ -15,6 +16,22 @@ from againpage.pipeline.reindex import run_reindex
 from againpage.scheduler.scheduler import Scheduler
 
 log = logging.getLogger("againpage.worker")
+
+MAX_JOB_ATTEMPTS = 5   # give up (dead-letter) after this many tries
+
+def retry_after(exc: Exception, attempts: int, max_attempts: int = MAX_JOB_ATTEMPTS) -> timedelta | None:
+    """Decide how to handle a failed job: return a backoff delay to retry, or
+    None to dead-letter it (stop retrying). Permanent client errors — a 4xx
+    other than 429, e.g. 402 out-of-credits, 401 bad key, 400/404 bad model —
+    can't succeed on retry, so fail immediately. Otherwise retry with capped
+    exponential backoff until max_attempts, then give up."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        if 400 <= code < 500 and code != 429:
+            return None
+    if attempts >= max_attempts:
+        return None
+    return timedelta(seconds=min(60, 2 ** attempts))
 
 # A hand-fed M1 payload so `trigger` works before ingest/selection exist.
 def fixture_payload(settings: SettingsRow) -> dict:
@@ -140,10 +157,19 @@ async def run_worker(pool, make_provider) -> None:  # pragma: no cover (loop)
                 await run_cluster(settings.user_id, repo=repo, provider=provider, settings=settings, cancelled=cancelled)
             await queue.complete(job.id)
             log.info("job %s: %s — done", job.id, job.type)
-        except Exception:  # noqa: BLE001
-            # Log the real error — otherwise a failing job retries invisibly forever.
-            log.exception("job %s: %s — FAILED (attempt %d), will retry", job.id, job.type, job.attempts)
-            await queue.fail(job.id, retry_in=timedelta(seconds=min(60, 2 ** job.attempts)))
+        except Exception as e:  # noqa: BLE001
+            delay = retry_after(e, job.attempts)
+            if delay is None:
+                # Permanent error, or out of retries: dead-letter it so it stops
+                # hammering the provider / flooding logs. It leaves active_jobs,
+                # which re-enables the reader's Generate/Re-index buttons.
+                log.error("job %s: %s — giving up after %d attempt(s), not retrying: %s",
+                          job.id, job.type, job.attempts, e)
+                await queue.fail(job.id, retry_in=None)
+            else:
+                log.exception("job %s: %s — FAILED (attempt %d), retrying in %ds",
+                              job.id, job.type, job.attempts, int(delay.total_seconds()))
+                await queue.fail(job.id, retry_in=delay)
 
 def main() -> None:  # pragma: no cover
     import os

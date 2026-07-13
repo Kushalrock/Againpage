@@ -40,6 +40,15 @@ async def test_fail_reschedules():
     assert again is not None and again.attempts == 2
 
 
+async def test_fail_with_no_retry_dead_letters():
+    # retry_in=None marks the job failed permanently — never re-claimed.
+    q = await fresh_queue()
+    await q.enqueue("generate", {})
+    job = await q.claim()
+    await q.fail(job.id, retry_in=None)
+    assert (await q.claim()) is None
+
+
 async def test_cancel_marks_running_and_is_cancelled_reports_it():
     q = await fresh_queue()
     await q.enqueue("ingest", {"force": True})
